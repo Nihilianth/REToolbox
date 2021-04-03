@@ -3,7 +3,7 @@ An addon which the user allows to see alts / guild members that know a particula
 
 Based around DataStore (req) aswell as the custom module [DataStore_AscensionRE](https://github.com/Nihilianth/DataStore_AscensionRE)
 
-Latest Releases contain the required libraries.
+Latest Releases contain the required libraries [Lates Release](https://github.com/Nihilianth/REToolbox/releases/tag/v0.0.1b).
 
 After installing this addon the RE tooltips will reflect if your alts or your guildies (using this addon) have this certain RE in their collection.
 
