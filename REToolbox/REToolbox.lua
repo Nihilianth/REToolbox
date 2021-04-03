@@ -85,6 +85,7 @@ local function HandleTooltipSet(ref, entry)
             end
         end
     end
+    ref:Show()
 end
 
 local function ShowLoadedInfo()
