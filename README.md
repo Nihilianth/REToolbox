@@ -3,7 +3,7 @@ An addon which the user allows to see alts / guild members that know a particula
 
 [Latest Release](https://github.com/Nihilianth/REToolbox/releases/tag/v0.0.1b-hotfix)s contain the required libraries . If you already have DataStore r26, you shouldn't need to replace it.
 
-Based around (DataStore r26)[https://www.curseforge.com/wow/addons/datastore/files/437591] aswell as the custom module [DataStore_AscensionRE](https://github.com/Nihilianth/DataStore_AscensionRE)
+Based around [DataStore r26](https://www.curseforge.com/wow/addons/datastore/files/437591) aswell as the custom module [DataStore_AscensionRE](https://github.com/Nihilianth/DataStore_AscensionRE)
 
 
 After installing this addon the RE tooltips will reflect if your alts or your guildies (using this addon) have this certain RE in their collection.
