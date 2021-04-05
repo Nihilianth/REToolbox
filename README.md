@@ -1,10 +1,10 @@
 # REToolbox
-An addon which the user allows to see alts / guild members that know a particular Mystic Enchant
+An addon for Ascension Classless realms. Allows you to see if characters on your account or your guildies have a particular Mystic Enchant in their collection.
 
-[Latest Release](https://github.com/Nihilianth/REToolbox/releases/tag/v0.0.2b)s contain the required libraries . If you already have DataStore r26, you shouldn't need to replace it.
+ZIP files found in [Latest Releases](https://github.com/Nihilianth/REToolbox/releases/tag/v0.0.2b) already contain the required libraries . If you already have DataStore r26, you don't have to replace it.
 
 ## New in Version 0.0.2b: Item tooltips
-You can now see information about a certain RE while browsing Auction House or viewing bags / item links.
+You can now see RE information while browsing Auction House items and viewing bags / item links.
 
 
 ![ah_item_tooltip](https://user-images.githubusercontent.com/6731717/113595889-e2f5e480-9639-11eb-8c06-019914d3b61f.png)
@@ -18,7 +18,7 @@ After installing this addon the RE tooltips will reflect if your alts or your gu
 
 ![known_guild_demo](https://user-images.githubusercontent.com/6731717/113483263-d2f7cc80-94a2-11eb-991a-5077097ade52.png)
 
-You will also be able to instantly check which new enchant you've unlocked aswell as to see if your character knows this particular enchant.
+This addon will provide you a link to the new RE after adding it to your collection. You are also be able to check if your current character has an enchant before attempting to extract it.
 
 
 ![enchant_unknown](https://user-images.githubusercontent.com/6731717/113483252-c96e6480-94a2-11eb-9809-59cfa56a9fea.png)
