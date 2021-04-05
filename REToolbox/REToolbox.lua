@@ -7,12 +7,13 @@ local addon = LibStub("AceAddon-3.0"):NewAddon(addonName, "AceConsole-3.0",
                                                "AceEvent-3.0")
 
 local RESpellList = {}
+RESpellDescription = {}
+RESpellNames = {}
 local REByRank = {}
-NumKnownREs = {}
-KnownREs = {}
+local NumKnownREs = {}
+local KnownREs = {}
 
 -- Helper functions
-
 local function GetEnchantLinkColored(entry)
     local name, rank, o = GetSpellInfo(entry)
     local c = GetEnchantColor(rank)
@@ -24,15 +25,15 @@ local function GetEnchantLinkColored(entry)
     end
 end
 
-
 local charColors = {"cff00FF7F","cffADFF2F","cffffffff", "cffffffff"}
-local charLineLabels = { "Mystic Enchant:", "Alts (%u):", "Guild (%u):", "Shared (%u):"}
+local charLineLabels = { "|cffFF0000Mystic Enchant:|r", "Alts (%u):", "Guild (%u):", "Shared (%u):"}
 
 local function HandleTooltipSet(ref, entry) 
+    if not ref then print("ref invalid") end
     if not RESpellList[entry] or RESpellList[entry] ~= true then return end
     if KnownREs[1] == nil then return end -- not yet initialized
 
-    local charNamesWithColor = {}
+    local charNamesWithColor = {} -- {1 - character, 2 - alts, 3 - guild (online first)}
     local chars = DataStore:GetCharactersWithRE(entry)
     local guildies = DataStore:GetGuildiesWithRE(entry)
     -- local shared = DataStore:GetSharedWithRE(entry)
@@ -96,7 +97,78 @@ local function ShowLoadedInfo()
                                                       "|r |cffff8000"..#KnownREs[5].."|r)")
   end
 
--- Tooltip hooks
+-- *** Tooltip hooks ***
+local function EnumerateTooltipLines_helper(...)
+    for i = 1, select("#", ...) do
+        local region = select(i, ...)
+        if region and region:GetObjectType() == "FontString" then
+            local text = region:GetText() -- string or nil
+            if text then 
+                print(i.." : "..text)
+            end
+        elseif region and region:GetObjectType() == "Texture" then
+            local tex = region:GetTexture()
+            if tex then 
+                print(i.." texture "..tex)
+            end
+        end
+
+    end
+end
+local function attachItemTooltip(self)
+    for l = 1, self:NumLines() do
+        local ttLine = _G[self:GetName() .. "TextLeft" .. l]:GetText()
+        if ttLine then 
+            if (ttLine) and (string.len(ttLine) > 40) then
+                if not string.find(ttLine, "^Equip:") and string.find(ttLine, "Equip:") then
+                    -- Strings found in the chat links are already colored. Strip before processing
+                    -- Handling in SetItemRef is possible but breaks the displayed view
+                    -- TODO: Check how this affects performance
+                    
+                    local colStart = (ttLine:find("|c"))
+                    local colEnd = (ttLine:find("|r"))
+                    -- "Requires Level" and the RE description are in the same tooltip line
+                    if colStart and colEnd then
+                        ttLine = ttLine:sub(1, colEnd + 1)
+                        local colorStr = ttLine:sub(colStart, 10)
+                        ttLine = ttLine:gsub(colorStr, "")
+
+                        ttLine = ttLine:gsub("|r", "")
+                        ttLine = ttLine:gsub("\r", "")
+                    end
+                end
+
+                if string.find(ttLine, "^Equip:")  then
+                    
+                    local descString = string.sub(ttLine, 8)       
+                    local descEntry = RESpellDescription[descString]
+
+                    if not descEntry then
+                        -- Ascension sometimes shows outdated RE descriptions in item tooltips
+                        -- Try to parse Enchant name instead
+                        local spellName
+                        local descStart = descString:find("( )(\-)( )") -- TODO: Verify pattern for " - "
+                        if descStart then
+                            spellName = descString:sub(1, descStart - 1)
+                        end
+                        if spellName then descEntry = RESpellNames[spellName] end
+                    end
+
+
+                    if (descEntry) then
+                        HandleTooltipSet(self, descEntry)
+                        return
+                    else   
+                        -- self:AddDoubleLine("|cffFF0000Mystic Enchant:|r", "invalid description")
+                        -- self:Show()
+                        return
+                        -- print("No Entry for description")
+                    end
+                end
+            end
+        end
+    end
+end
 
 -- hook spell icon tooltip
 GameTooltip:HookScript("OnTooltipSetSpell", function(self)
@@ -109,10 +181,14 @@ end)
 -- hook spell info from chat links
 hooksecurefunc("SetItemRef", function(link, ...)
     if not initialized then return end
-    -- addon:Print("SetItemRef")
     local entry = tonumber(link:match("spell:(%d+)"))
-    HandleTooltipSet(ItemRefTooltip, entry)
+    -- if not entry then entry = tonumber(link:match("v4:(%d+)")) end
+    if entry then
+        HandleTooltipSet(ItemRefTooltip, entry)
+    end
 end)
+
+-- *** DataStore_AscensionRE processing ***
 
 function addon:ASC_COLLECTION_UPDATE(event, knownList, init)
     -- addon:Print("Collection Update received " .. #knownList)
@@ -148,11 +224,31 @@ function addon:ASC_COLLECTION_INIT(event, spellList)
     REByRank = {}
     for n = 1, 5 do REByRank[n] = {} end
 
+    
+  local tooltip = CreateFrame("GameTooltip", "DescParseTooltip", UIParent, "GameTooltipTemplate")
+
     for _, entry in pairs(spellList) do
         local name, rank, icon = GetSpellInfo(entry)
         if not rank or rank == "" then
             addon:Print("Unknown Enchant Id: " .. entry)
         else
+            -- Extract descriptions for item tooltips
+
+            tooltip:SetOwner(WorldFrame, "ACHOR_NONE")
+            tooltip:SetHyperlink("spell:"..entry)
+            local desc =_G[tooltip:GetName().."TextLeft"..tooltip:NumLines()]:GetText()
+            
+            desc = desc:gsub("\r", "") -- required to parse multi-line descriptions
+            if desc then 
+                RESpellDescription[name.." - "..desc] = entry
+                RESpellNames[name] = entry
+
+            else
+                addon:Print("No description for spell "..entry.. " : "..name)
+            end
+
+            -- Set up spell list
+
             local rank_str = string.match(rank, "(%d+)")
             if rank_str then
                 -- addon:Print(rank.." "..rank_str..":"..entry)
@@ -164,18 +260,8 @@ function addon:ASC_COLLECTION_INIT(event, spellList)
         end
     end
     initialized = true
+    tooltip:Hide()
 end
-
-local function GetEnchantLinkColored(entry)
-    local name, rank, o = GetSpellInfo(entry)
-    local c = GetEnchantColor(rank)
-    local link = c .. "|Hspell:" .. entry .. "|h[" .. name .. "]|h|r"
-    if (link) then 
-      return link
-    else
-      return "<Unknown Enchant>"
-    end
-  end
 
 function addon:ASC_COLLECTION_RE_UNLOCKED(event, entry)
     local link = GetEnchantLinkColored(entry)
@@ -189,6 +275,17 @@ function addon:OnInitialize()
 end
 
 function addon:OnEnable() end
-
 function addon:OnDisable() end
+
+GameTooltip:HookScript("OnTooltipSetItem", attachItemTooltip)
+ItemRefTooltip:HookScript("OnTooltipSetItem", attachItemTooltip)
+ItemRefShoppingTooltip1:HookScript("OnTooltipSetItem", attachItemTooltip)
+ItemRefShoppingTooltip2:HookScript("OnTooltipSetItem", attachItemTooltip)
+ItemRefShoppingTooltip3:HookScript("OnTooltipSetItem", attachItemTooltip)
+ShoppingTooltip1:HookScript("OnTooltipSetItem", attachItemTooltip)
+ShoppingTooltip2:HookScript("OnTooltipSetItem", attachItemTooltip)
+ShoppingTooltip3:HookScript("OnTooltipSetItem", attachItemTooltip)
+
+
+
 
