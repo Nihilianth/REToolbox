@@ -1,6 +1,6 @@
 ## Interface: 30300
 ## Title: REToolbox by Nihilianth
-## Notes: Advanced features for Ascension's Mythic Enchants
+## Notes: Advanced features for Ascension's Mystic Enchants
 ## Author: Nihilianth (Canalmist on Area 52)
 ## Version: 0.0.002b
 ## Dependencies: DataStore DataStore_AscensionRE

@@ -6,12 +6,13 @@ local initialized = false
 local addon = LibStub("AceAddon-3.0"):NewAddon(addonName, "AceConsole-3.0",
                                                "AceEvent-3.0")
 
-local RESpellList = {}
+RESpellList = {}
 RESpellDescription = {}
+REDescriptionForSpell = {}
 RESpellNames = {}
 local REByRank = {}
 local NumKnownREs = {}
-local KnownREs = {}
+KnownREs = {}
 
 -- Helper functions
 local function GetEnchantLinkColored(entry)
@@ -32,6 +33,13 @@ local function HandleTooltipSet(ref, entry)
     if not ref then print("ref invalid") end
     if not RESpellList[entry] or RESpellList[entry] ~= true then return end
     if KnownREs[1] == nil then return end -- not yet initialized
+
+    -- Color the name in tooltip
+    if ref:GetObjectType() == "GameTooltip" and select(3 , ref:GetSpell()) == entry then
+        local name, rank, o = GetSpellInfo(entry)
+        local c = GetEnchantColor(rank)
+        _G[ref:GetName() .. "TextLeft" .. 1]:SetText(format("%s%s|r", c, name))
+    end
 
     local charNamesWithColor = {} -- {1 - character, 2 - alts, 3 - guild (online first)}
     local chars = DataStore:GetCharactersWithRE(entry)
@@ -173,16 +181,20 @@ end
 -- hook spell icon tooltip
 GameTooltip:HookScript("OnTooltipSetSpell", function(self)
     if not initialized then return end
-    -- addon:Print("OnTooltipSetSpell")
-    local entry = select(3, self:GetSpell())
+    --addon:Print("OnTooltipSetSpell")
+    local entry = select(3 , self:GetSpell())
+    --print(select(3, self:GetSpell()))
     HandleTooltipSet(self, entry)
 end)
 
 -- hook spell info from chat links
 hooksecurefunc("SetItemRef", function(link, ...)
-    if not initialized then return end
+    if not initialized or IsModifierKeyDown () then return end
+    -- print(IsModifiedClick("CHATLINK"))
+    --addon:Print("SetItemRef")
     local entry = tonumber(link:match("spell:(%d+)"))
     -- if not entry then entry = tonumber(link:match("v4:(%d+)")) end
+    --print(select(3, self:GetSpell()))
     if entry then
         HandleTooltipSet(ItemRefTooltip, entry)
     end
@@ -241,6 +253,7 @@ function addon:ASC_COLLECTION_INIT(event, spellList)
             desc = desc:gsub("\r", "") -- required to parse multi-line descriptions
             if desc then 
                 RESpellDescription[name.." - "..desc] = entry
+                REDescriptionForSpell[entry] = desc
                 RESpellNames[name] = entry
 
             else
@@ -272,7 +285,87 @@ function addon:OnInitialize()
     addon:RegisterMessage("ASC_COLLECTION_UPDATE")
     addon:RegisterMessage("ASC_COLLECTION_INIT")
     addon:RegisterMessage("ASC_COLLECTION_RE_UNLOCKED")
+    addon:RegisterEvent("CHAT_MSG_ADDON")
 end
+
+
+local slotNames = {
+    [0] =  "Head",
+    [1] =  "Neck",
+    [2] =  "Shoulder",
+    [3] =  "Shirt",
+    [4] =  "Chest",
+    [5] =  "Waist",
+    [6] =  "Legs",
+    [7] =  "Feet",
+    [8] =  "Wrist",
+    [9] =  "Hands",
+    [10] = "Finger0",
+    [11] = "Finger1",
+    [12] = "Trinket0",
+    [13] = "Trinket1",
+    [14] = "Back",
+    [15] = "MainHand",
+    [16] = "SecondaryHand",
+    [17] = "Ranged",
+    [18] = "Tabard",
+}
+
+function AscCharRE_HighlightSlot(tt, self, slots) 
+	for idx, slot in pairs(slots) do
+		local parentSlot = _G["Character" .. slotNames[slot] .. "Slot"]
+		if parentSlot == nil then print("no parent slot") else
+		-- parentSlot:SetAlpha(0.5)
+		parentSlot:SetHighlightTexture("Interface\\Buttons\\CheckButtonHilight");
+		--parentSlot:SetHighlightTexture("Interface\\TargetingFrame\\UI-TargetingFrame-Flash")
+		
+		parentSlot:LockHighlight()
+		end
+	end
+    GameTooltip:SetOwner(tt, "ANCHOR_RIGHT", 0, 0)
+    
+    GameTooltip:SetHyperlink(GetEnchantLinkColored(tt.Spell))
+    -- GameTooltip:SetHyperlink("|cff71d5ff|Hspell:" .. tt.Spell ..
+                                -- "|h[SpellName]|h|r")
+    GameTooltip:Show()
+end
+
+function AscCharRE_RemoveHighlight(tt, self, slots)
+	for idx, slot in pairs(slots) do
+		local parentSlot = _G["Character" .. slotNames[slot] .. "Slot"]
+		if parentSlot == nil then print("no parent slot") else
+		parentSlot:UnlockHighlight()
+		end
+	end
+	GameTooltip:Hide()
+end
+
+function addon:CHAT_MSG_ADDON(event, prefix,message,form,player)
+    if message:find("UpdatePaperDoll") then
+        recvTable = Smallfolk.loads(string.sub(message, 3))
+        if not type(recvTable) == "table" then return end
+        -- print(#(recvTable[1])) -- [1][5] slot : spellid
+
+        spellSlots = {}
+        -- print(#recvTable[1][4], #recvTable[1][5])
+        for slotId, spellId in pairs(recvTable[1][5]) do
+            if not spellSlots[spellId] then spellSlots[spellId] = {slotId} 
+            else
+                table.insert(spellSlots[spellId], slotId)
+            end
+            -- print("adding spell "..spellId)
+        end
+    
+        local idx = 1
+        
+        for spellId, data in pairs(recvTable[1][4]) do
+            _G["CharFrameNewPart_EnchantsFrame1TextFrame" .. idx.."Icon"]:SetScript("OnEnter", function(e) AscCharRE_HighlightSlot (e, idx, spellSlots[spellId]) end)
+            _G["CharFrameNewPart_EnchantsFrame1TextFrame" .. idx.."Icon"]:SetScript("OnLeave", function(e) AscCharRE_RemoveHighlight (e, idx, spellSlots[spellId]) end)
+            idx = idx + 1
+        end
+    end
+end
+
 
 function addon:OnEnable() end
 function addon:OnDisable() end
