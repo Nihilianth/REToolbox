@@ -1,0 +1,639 @@
+<Ui xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xsi:schemaLocation="http://www.blizzard.com/wow/ui/ ..\..\FrameXML\UI.xsd" xmlns="http://www.blizzard.com/wow/ui/">
+	<Script file="EnchantListFrame.lua" />
+	<Button name="EnchantListSkillButtonTemplate" inherits="ClassTrainerSkillButtonTemplate" virtual="true" hidden="false">
+		<Layers>
+			<Layer level="OVERLAY">
+				<FontString name="$parentCount" inherits="GameFontNormal">
+					<Size y="13" />
+					<Anchors>
+						<Anchor point="LEFT">
+							<Offset />
+						</Anchor>
+					</Anchors>
+				</FontString>
+			</Layer>
+		</Layers>
+		<Scripts>
+			<OnClick>
+				if ( IsModifiedClick() ) then
+				HandleModifiedItemClick(GetSkillLink(self:GetID()));
+				else
+				EnchantListSkillButton_OnClick(self, button);
+				end
+			</OnClick>
+			<OnLoad>
+				_G[self:GetName().."Count"]:SetPoint("LEFT", self:GetName().."Text", "RIGHT", 2, 0);
+			</OnLoad>
+			<OnEnter>
+				EnchantListFrame_SetTooltip(self:GetID())
+				_G[self:GetName().."Count"]:SetVertexColor(HIGHLIGHT_FONT_COLOR.r, HIGHLIGHT_FONT_COLOR.g, HIGHLIGHT_FONT_COLOR.b);
+			</OnEnter>
+			<OnLeave>
+				EnchantListFrame_SetTooltip(0)
+				if ( not self.isHighlighted ) then
+				_G[self:GetName().."Count"]:SetVertexColor(self.r, self.g, self.b);
+				end
+			</OnLeave>
+		</Scripts>
+	</Button>
+	<Button name="EnchantListSkillItemTemplate" inherits="QuestItemTemplate" virtual="true">
+		<Scripts>
+			<OnEnter>
+				GameTooltip:SetOwner(self, "ANCHOR_TOPLEFT");
+				GameTooltip:SetTradeSkillItem(EnchantListFrame.selectedSkill, self:GetID());
+				CursorUpdate(self);
+			</OnEnter>
+			<OnLeave>
+				GameTooltip:Hide();
+				ResetCursor();
+			</OnLeave>
+			<OnUpdate>
+				CursorOnUpdate(self, elapsed);
+			</OnUpdate>
+			<OnClick>
+				HandleModifiedItemClick(GetTradeSkillReagentItemLink(TradeSkillFrame.selectedSkill, self:GetID()));
+			</OnClick>
+		</Scripts>
+	</Button>
+	<Frame name="EnchantListFrame" parent="UIParent" toplevel="true" movable="true" enableMouse="true">
+		<Size>
+			<AbsDimension x="384" y="512" />
+		</Size>
+		<Anchors>
+			<Anchor point="TOPLEFT">
+				<Offset>
+					<AbsDimension x="0" y="-104" />
+				</Offset>
+			</Anchor>
+		</Anchors>
+		<HitRectInsets>
+			<AbsInset left="0" right="34" top="0" bottom="75" />
+		</HitRectInsets>
+		<Layers>
+			<Layer level="BACKGROUND">
+				<Texture name="EnchantListFramePortrait">
+					<Size>
+						<AbsDimension x="60" y="60" />
+					</Size>
+					<Anchors>
+						<Anchor point="TOPLEFT">
+							<Offset>
+								<AbsDimension x="7" y="-6" />
+							</Offset>
+						</Anchor>
+					</Anchors>
+				</Texture>
+				<FontString name="$parentDummyString" inherits="GameFontNormal" hidden="true">
+					<Size />
+					<Anchors>
+						<Anchor point="TOPLEFT">
+							<Offset />
+						</Anchor>
+					</Anchors>
+				</FontString>
+			</Layer>
+			<Layer level="BORDER">
+				<Texture file="Interface\ClassTrainerFrame\UI-ClassTrainer-TopLeft" nonBlocking="true">
+					<Size>
+						<AbsDimension x="256" y="256" />
+					</Size>
+					<Anchors>
+						<Anchor point="TOPLEFT" />
+					</Anchors>
+				</Texture>
+				<Texture file="Interface\ClassTrainerFrame\UI-ClassTrainer-TopRight">
+					<Size>
+						<AbsDimension x="128" y="256" />
+					</Size>
+					<Anchors>
+						<Anchor point="TOPRIGHT" />
+					</Anchors>
+				</Texture>
+				<Texture name="EnchantListFrameBottomLeftTexture" file="Interface\PaperDollInfoFrame\SkillFrame-BotLeft">
+					<Size>
+						<AbsDimension x="256" y="256" />
+					</Size>
+					<Anchors>
+						<Anchor point="BOTTOMLEFT" />
+					</Anchors>
+				</Texture>
+				<Texture name="EnchantListFrameBottomRightTexture" file="Interface\PaperDollInfoFrame\SkillFrame-BotRight">
+					<Size>
+						<AbsDimension x="128" y="256" />
+					</Size>
+					<Anchors>
+						<Anchor point="BOTTOMRIGHT" />
+					</Anchors>
+				</Texture>
+				<FontString name="EnchantListFrameTitleText" inherits="GameFontNormal" text="Mystic Enchanting (REToolbox)">
+					<Anchors>
+						<Anchor point="TOP" relativeTo="EnchantListFrame" relativePoint="TOP">
+							<Offset>
+								<AbsDimension x="0" y="-17" />
+							</Offset>
+						</Anchor>
+					</Anchors>
+				</FontString>
+			</Layer>
+			<Layer>
+				<Texture name="EnchantListHorizontalBarLeft" file="Interface\ClassTrainerFrame\UI-ClassTrainer-HorizontalBar">
+					<Size>
+						<AbsDimension x="256" y="16" />
+					</Size>
+					<Anchors>
+						<Anchor point="TOPLEFT">
+							<Offset>
+								<AbsDimension x="15" y="-221" />
+							</Offset>
+						</Anchor>
+					</Anchors>
+					<TexCoords left="0" right="1" top="0" bottom="0.25" />
+				</Texture>
+				<Texture file="Interface\ClassTrainerFrame\UI-ClassTrainer-HorizontalBar">
+					<Size>
+						<AbsDimension x="75" y="16" />
+					</Size>
+					<Anchors>
+						<Anchor point="LEFT" relativeTo="EnchantListHorizontalBarLeft" relativePoint="RIGHT">
+							<Offset>
+								<AbsDimension x="0" y="0" />
+							</Offset>
+						</Anchor>
+					</Anchors>
+					<TexCoords left="0" right="0.29296875" top="0.25" bottom="0.5" />
+				</Texture>
+			</Layer>
+		</Layers>
+		<Frames>
+			<EditBox name="$parentEditBox" autoFocus="false">
+				<Size>
+					<AbsDimension x="152" y="20" />
+				</Size>
+				<Anchors>
+					<Anchor point="TOPRIGHT" relativeTo="EnchantListFrame" relativePoint="BOTTOMRIGHT">
+						<Offset x="-59" y="466" />
+					</Anchor>
+				</Anchors>
+				<Layers>
+					<Layer level="BACKGROUND">
+						<Texture name="$parentLeft" file="Interface\Common\Common-Input-Border">
+							<Size>
+								<AbsDimension x="8" y="20" />
+							</Size>
+							<Anchors>
+								<Anchor point="TOPLEFT">
+									<Offset x="-5" />
+								</Anchor>
+							</Anchors>
+							<TexCoords left="0" right="0.0625" top="0" bottom="0.625" />
+						</Texture>
+						<Texture name="$parentRight" file="Interface\Common\Common-Input-Border">
+							<Size>
+								<AbsDimension x="8" y="20" />
+							</Size>
+							<Anchors>
+								<Anchor point="RIGHT">
+									<Offset />
+								</Anchor>
+							</Anchors>
+							<TexCoords left="0.9375" right="1" top="0" bottom="0.625" />
+						</Texture>
+						<Texture name="$parentMiddle" file="Interface\Common\Common-Input-Border">
+							<Size>
+								<AbsDimension x="0" y="20" />
+							</Size>
+							<Anchors>
+								<Anchor point="LEFT" relativeTo="$parentLeft" relativePoint="RIGHT" />
+								<Anchor point="RIGHT" relativeTo="$parentRight" relativePoint="LEFT" />
+							</Anchors>
+							<TexCoords left="0.0625" right="0.9375" top="0" bottom="0.625" />
+						</Texture>
+					</Layer>
+				</Layers>
+				<Frames>
+					<Frame name="EnchantListQualityDropDown" inherits="UIDropDownMenuTemplate" id="1">
+						<Anchors>
+							<Anchor point="LEFT" relativeTo="EnchantListFrameEditBox" relativePoint="RIGHT">
+								<Offset x="-149" y="-25" />
+							</Anchor>
+						</Anchors>
+						<Layers>
+							<Layer level="OVERLAY">
+								<FontString inherits="GameFontNormal" text="Quality:">
+									<Size x="80" y="20" />
+									<Anchors>
+										<Anchor point="LEFT" relativeTo="EnchantListFrameEditBox" relativePoint="RIGHT">
+											<Offset x="-200" y="-25" />
+										</Anchor>
+									</Anchors>
+								</FontString>
+							</Layer>
+						</Layers>
+						<Scripts>
+							<OnLoad function="EnchantListQualityDropDown_OnLoad">
+
+							</OnLoad>
+						</Scripts>
+					</Frame>
+				</Frames>
+				<Scripts>
+					<OnShow>
+						self:SetText(SEARCH);
+					</OnShow>
+					<OnEnterPressed function="EditBox_ClearFocus">
+
+					</OnEnterPressed>
+					<OnEscapePressed function="EditBox_ClearFocus">
+
+					</OnEscapePressed>
+					<OnTextChanged function="EnchantListFilter_OnTextChanged">
+
+					</OnTextChanged>
+					<OnEditFocusLost>
+						self:HighlightText(0, 0);
+						if ( self:GetText() == "" ) then
+						self:SetText(SEARCH);
+						end
+					</OnEditFocusLost>
+					<OnEditFocusGained>
+						self:HighlightText();
+						if ( self:GetText() == SEARCH ) then
+						self:SetText("");
+						end
+					</OnEditFocusGained>
+				</Scripts>
+				<FontString inherits="ChatFontSmall" />
+			</EditBox>
+			<Frame name="EnchantListExpandButtonFrame" hidden="true">
+				<Size>
+					<AbsDimension x="54" y="32" />
+				</Size>
+				<Anchors>
+					<Anchor point="TOPLEFT">
+						<Offset>
+							<AbsDimension x="15" y="-71" />
+						</Offset>
+					</Anchor>
+				</Anchors>
+				<Layers>
+					<Layer level="BACKGROUND">
+						<Texture name="EnchantListExpandTabLeft" file="Interface\ClassTrainerFrame\UI-ClassTrainer-ExpandTab-Left">
+							<Size>
+								<AbsDimension x="8" y="32" />
+							</Size>
+							<Anchors>
+								<Anchor point="TOPLEFT" />
+							</Anchors>
+						</Texture>
+						<Texture name="EnchantListExpandTabMiddle" file="Interface\QuestFrame\UI-QuestLogSortTab-Middle">
+							<Size>
+								<AbsDimension x="38" y="32" />
+							</Size>
+							<Anchors>
+								<Anchor point="LEFT" relativeTo="EnchantListExpandTabLeft" relativePoint="RIGHT">
+									<Offset>
+										<AbsDimension x="0" y="6" />
+									</Offset>
+								</Anchor>
+							</Anchors>
+						</Texture>
+						<Texture name="EnchantListExpandTabRight" file="Interface\QuestFrame\UI-QuestLogSortTab-Right">
+							<Size>
+								<AbsDimension x="8" y="32" />
+							</Size>
+							<Anchors>
+								<Anchor point="LEFT" relativeTo="EnchantListExpandTabMiddle" relativePoint="RIGHT" />
+							</Anchors>
+						</Texture>
+					</Layer>
+				</Layers>
+				<Frames>
+					<Button name="EnchantListCollapseAllButton" inherits="ClassTrainerSkillButtonTemplate">
+						<Size>
+							<AbsDimension x="40" y="22" />
+						</Size>
+						<Anchors>
+							<Anchor point="LEFT" relativeTo="EnchantListExpandTabLeft" relativePoint="RIGHT">
+								<Offset>
+									<AbsDimension x="0" y="3" />
+								</Offset>
+							</Anchor>
+						</Anchors>
+						<Scripts>
+							<OnLoad>
+								_G[self:GetName()]:SetText(ALL);
+							</OnLoad>
+						</Scripts>
+					</Button>
+				</Frames>
+			</Frame>
+			<Frame name="EnchantListHighlightFrame" hidden="true">
+				<Size>
+					<AbsDimension x="293" y="16" />
+				</Size>
+				<Anchors>
+					<Anchor point="TOPLEFT" />
+				</Anchors>
+				<Layers>
+					<Layer>
+						<Texture name="EnchantListHighlight" file="Interface\Buttons\UI-Listbox-Highlight2" />
+					</Layer>
+				</Layers>
+			</Frame>
+			<ScrollFrame name="EnchantListListScrollFrame" inherits="ClassTrainerListScrollFrameTemplate">
+				<Size>
+					<AbsDimension x="296" y="130" />
+				</Size>
+				<Anchors>
+					<Anchor point="TOPRIGHT" relativeTo="EnchantListFrame" relativePoint="TOPRIGHT">
+						<Offset>
+							<AbsDimension x="-67" y="-96" />
+						</Offset>
+					</Anchor>
+				</Anchors>
+				<Scripts>
+					<OnVerticalScroll>
+						FauxScrollFrame_OnVerticalScroll(self, offset, 16, EnchantListFrame_Update);
+					</OnVerticalScroll>
+				</Scripts>
+			</ScrollFrame>
+			<ScrollFrame name="EnchantListDetailScrollFrame" inherits="ClassTrainerDetailScrollFrameTemplate">
+				<Size>
+					<AbsDimension x="297" y="165" />
+				</Size>
+				<Anchors>
+					<Anchor point="TOPLEFT">
+						<Offset>
+							<AbsDimension x="20" y="-234" />
+						</Offset>
+					</Anchor>
+				</Anchors>
+				<ScrollChild>
+					<Frame name="EnchantListDetailScrollChildFrame">
+						<Size>
+							<AbsDimension x="297" y="150" />
+						</Size>
+						<Layers>
+							<Layer level="BACKGROUND">
+								<FontString name="EnchantListSkillName" inherits="GameFontNormal" text="Skill Name" justifyH="LEFT">
+									<Size>
+										<AbsDimension x="244" y="0" />
+									</Size>
+									<Anchors>
+										<Anchor point="TOPLEFT">
+											<Offset>
+												<AbsDimension x="50" y="-5" />
+											</Offset>
+										</Anchor>
+									</Anchors>
+								</FontString>
+								<FontString name="EnchantListSpellIdLabel" inherits="GameFontHighlightSmall" text="Spell Id:">
+									<Anchors>
+										<Anchor point="TOPLEFT" relativeTo="EnchantListSkillName" relativePoint="BOTTOMLEFT">
+											<Offset>
+												<AbsDimension x="0" y="0" />
+											</Offset>
+										</Anchor>
+									</Anchors>
+								</FontString>
+								<FontString name="EnchantListSpellIdText" inherits="GameFontHighlightSmall" justifyV="TOP" justifyH="LEFT">
+									<Size>
+										<AbsDimension x="180" y="0" />
+									</Size>
+									<Anchors>
+										<Anchor point="TOPLEFT" relativeTo="EnchantListSpellIdLabel" relativePoint="TOPRIGHT">
+											<Offset>
+												<AbsDimension x="4" y="0" />
+											</Offset>
+										</Anchor>
+									</Anchors>
+								</FontString>
+								<FontString name="EnchantListSkillCooldown" inherits="GameFontRedSmall">
+									<Anchors>
+										<Anchor point="TOPLEFT" relativeTo="EnchantListSpellIdLabel" relativePoint="BOTTOMLEFT">
+											<Offset>
+												<AbsDimension x="0" y="0" />
+											</Offset>
+										</Anchor>
+									</Anchors>
+								</FontString>
+								<Texture name="EnchantListDetailHeaderLeft" file="Interface\ClassTrainerFrame\UI-ClassTrainer-DetailHeaderLeft">
+									<Size>
+										<AbsDimension x="256" y="64" />
+									</Size>
+									<Anchors>
+										<Anchor point="TOPLEFT">
+											<Offset>
+												<AbsDimension x="0" y="3" />
+											</Offset>
+										</Anchor>
+									</Anchors>
+								</Texture>
+								<Texture file="Interface\ClassTrainerFrame\UI-ClassTrainer-DetailHeaderRight">
+									<Size>
+										<AbsDimension x="64" y="64" />
+									</Size>
+									<Anchors>
+										<Anchor point="TOPLEFT" relativeTo="EnchantListDetailHeaderLeft" relativePoint="TOPRIGHT">
+											<Offset>
+												<AbsDimension x="0" y="0" />
+											</Offset>
+										</Anchor>
+									</Anchors>
+								</Texture>
+							</Layer>
+						</Layers>
+						<Frames>
+							<Button name="EnchantListSkillIcon">
+								<Size>
+									<AbsDimension x="37" y="37" />
+								</Size>
+								<Anchors>
+									<Anchor point="TOPLEFT">
+										<Offset>
+											<AbsDimension x="8" y="-3" />
+										</Offset>
+									</Anchor>
+								</Anchors>
+								<Layers>
+									<Layer>
+										<FontString name="EnchantListSkillIconCount" inherits="NumberFontNormal" outline="NORMAL" justifyH="RIGHT">
+											<Anchors>
+												<Anchor point="BOTTOMRIGHT">
+													<Offset>
+														<AbsDimension x="-5" y="2" />
+													</Offset>
+												</Anchor>
+											</Anchors>
+											<FontHeight>
+												<AbsValue val="14" />
+											</FontHeight>
+											<Color r="1" g="1" b="1" />
+										</FontString>
+									</Layer>
+								</Layers>
+								<Scripts>
+									<OnLoad>
+										self.hasItem = 1;
+									</OnLoad>
+									<OnClick>
+										HandleModifiedItemClick(GetTradeSkillItemLink(EnchantListFrame.selectedSkill));
+									</OnClick>
+									<OnEnter function="EnchantListItem_OnEnter">
+
+									</OnEnter>
+									<OnLeave function="GameTooltip_HideResetCursor">
+
+									</OnLeave>
+									<OnUpdate>
+										if ( GameTooltip:IsOwned(self) ) then
+										EnchantListItem_OnEnter(self);
+										end
+										CursorOnUpdate(self);
+									</OnUpdate>
+								</Scripts>
+							</Button>
+						</Frames>
+						<Layers>
+							<Layer level="BACKGROUND">
+								<FontString name="EnchantListDescription" inherits="GameFontHighlightSmall" justifyH="LEFT" justifyV="TOP">
+									<Size>
+										<AbsDimension x="290" y="0" />
+									</Size>
+									<Anchors>
+										<Anchor point="TOPLEFT">
+											<Offset>
+												<AbsDimension x="5" y="-60" />
+											</Offset>
+										</Anchor>
+									</Anchors>
+								</FontString>
+							</Layer>
+						</Layers>
+						<Scripts>
+							<OnLoad>
+								EnchantListDetailScrollChildFrame_OnLoad()
+							</OnLoad>
+						</Scripts>
+					</Frame>
+				</ScrollChild>
+			</ScrollFrame>
+			<Button name="EnchantListFrameCloseButton" inherits="UIPanelCloseButton">
+				<Anchors>
+					<Anchor point="TOPRIGHT" relativeTo="EnchantListFrame" relativePoint="TOPRIGHT">
+						<Offset>
+							<AbsDimension x="-29" y="-8" />
+						</Offset>
+					</Anchor>
+				</Anchors>
+			</Button>
+			<Button name="EnchantListLinkButton">
+				<Size>
+					<AbsDimension x="32" y="16"/>
+				</Size>
+				<Anchors>
+					<Anchor point="RIGHT" relativeTo="EnchantListFrameCloseButton" relativePoint="LEFT">
+						<Offset>
+							<AbsDimension x="-5" y="0"/>
+						</Offset>
+					</Anchor>
+				</Anchors>
+				<Scripts>
+					<OnClick>
+						ChatEdit_GetLastActiveWindow():Show();
+						RETBLinkPrint("%s");
+					</OnClick>
+					<OnEnter>
+						GameTooltip:SetOwner(self,"ANCHOR_TOPLEFT");
+						GameTooltip:SetText("Click to create a link to your RE collection.", nil, nil, nil, nil, 1);
+						GameTooltip:Show();
+					</OnEnter>
+					<OnLeave function="GameTooltip_Hide"/>
+				</Scripts>
+				<NormalTexture file="Interface\TradeSkillFrame\UI-TradeSkill-LinkButton">
+					<TexCoords left="0" right="1.0" top="0" bottom="0.5"/>
+				</NormalTexture>
+				<HighlightTexture file="Interface\TradeSkillFrame\UI-TradeSkill-LinkButton" alphaMode="ADD">
+					<TexCoords left="0" right="1.0" top="0.5" bottom="1.0"/>
+				</HighlightTexture>
+			</Button>
+			<CheckButton name="EnchantListIncludeDescButton" inherits="UICheckButtonTemplate" checked="true">
+				<Size>
+					<AbsDimension x="24" y="24" />
+				</Size>
+				<Anchors>
+					<Anchor point="RIGHT" relativeTo="EnchantListFrameEditBox" relativePoint="LEFT">
+						<Offset x="-80" />
+					</Anchor>
+				</Anchors>
+				<HitRectInsets>
+					<AbsInset left="0" right="-75" top="0" bottom="0" />
+				</HitRectInsets>
+				<Scripts>
+					<OnLoad>
+						EnchantListIncludeDescButtonText:SetText("Description");
+					</OnLoad>
+					<OnEnter>
+						GameTooltip:SetOwner(self,"ANCHOR_TOPLEFT");
+						GameTooltip:SetText("Include RE description.", nil, nil, nil, nil, 1);
+						GameTooltip:Show();
+					</OnEnter>
+					<OnClick>
+						EnchantListApplyFilter();
+					</OnClick>
+					<OnLeave function="GameTooltip_Hide">
+
+					</OnLeave>
+				</Scripts>
+			</CheckButton>
+			<CheckButton name="EnchantListHideKnownFilterCheckButton" inherits="UICheckButtonTemplate">
+				<Size>
+					<AbsDimension x="24" y="24" />
+				</Size>
+				<Anchors>
+					<Anchor point="TOP" relativeTo="EnchantListIncludeDescButton" relativePoint="BOTTOM">
+						<Offset x="-23" y="-3" />
+					</Anchor>
+				</Anchors>
+				<HitRectInsets>
+					<AbsInset left="0" right="-75" top="0" bottom="0" />
+				</HitRectInsets>
+				<Scripts>
+					<OnLoad>
+						EnchantListHideKnownFilterCheckButtonText:SetText("Hide known");
+					</OnLoad>
+					<OnClick>
+						EnchantListApplyFilter();
+					</OnClick>
+					<OnEnter>
+						GameTooltip:SetOwner(self, "ANCHOR_LEFT");
+						GameTooltip:SetText("Hide known REs.", nil, nil, nil, nil, 1);
+					</OnEnter>
+					<OnLeave function="GameTooltip_Hide">
+
+					</OnLeave>
+				</Scripts>
+			</CheckButton>
+		</Frames>
+		<Scripts>
+			<OnMouseDown>self:StartMoving();</OnMouseDown>
+			<OnMouseUp>self:StopMovingOrSizing();</OnMouseUp>
+			<OnEvent function="EnchantListFrame_OnEvent">
+
+			</OnEvent>
+			<OnLoad function="EnchantListFrame_OnLoad">
+
+			</OnLoad>
+			<OnShow>
+				PlaySound("igCharacterInfoOpen");
+			</OnShow>
+			<OnHide>
+				EnchantListFrameInspectTooltip:Hide()
+				PlaySound("igCharacterInfoClose");
+			</OnHide>
+			<OnUpdate function="EnchantListFrame_PlaytimeUpdate">
+
+			</OnUpdate>
+		</Scripts>
+	</Frame>
+</Ui>

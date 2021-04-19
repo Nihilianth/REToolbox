@@ -29,7 +29,7 @@ end
 local charColors = {"cff00FF7F","cffADFF2F","cffffffff", "cffffffff"}
 local charLineLabels = { "|cffFF0000Mystic Enchant:|r", "Alts (%u):", "Guild (%u):", "Shared (%u):"}
 
-local function HandleTooltipSet(ref, entry) 
+function HandleTooltipSet(ref, entry) 
     if not ref then print("ref invalid") end
     if not RESpellList[entry] or RESpellList[entry] ~= true then return end
     if KnownREs[1] == nil then return end -- not yet initialized

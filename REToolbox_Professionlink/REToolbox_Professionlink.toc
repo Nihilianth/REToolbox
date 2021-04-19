@@ -1,0 +1,9 @@
+## Interface: 30300
+## Title: REToolbox_Professionlink
+## Version: 0.0.3b
+## Author: Nihilianth
+
+embeds.xml
+
+EnchantListFrame.xml
+Libs/LibDeflate/LibDeflate.lua
