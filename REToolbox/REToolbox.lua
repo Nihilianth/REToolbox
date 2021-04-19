@@ -342,6 +342,9 @@ end
 
 function addon:CHAT_MSG_ADDON(event, prefix,message,form,player)
     if message:find("UpdatePaperDoll") then
+        if _G["CharFrameNewPart_EnchantsFrame1TextFrame1Icon"] == nil then
+            return
+        end
         recvTable = Smallfolk.loads(string.sub(message, 3))
         if not type(recvTable) == "table" then return end
         -- print(#(recvTable[1])) -- [1][5] slot : spellid
