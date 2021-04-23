@@ -518,6 +518,51 @@
 					</Frame>
 				</ScrollChild>
 			</ScrollFrame>
+
+			<Button name="EnchantListApplyREButton" inherits="UIPanelButtonTemplate" text="Apply RE">
+				<Size>
+					<AbsDimension x="80" y="22"/>
+				</Size>
+				<Anchors>
+					<Anchor point="CENTER" relativeTo="EnchantListFrame" relativePoint="TOPLEFT">
+						<Offset>
+							<AbsDimension x="300" y="-421"/>
+						</Offset>
+					</Anchor>
+				</Anchors>
+				<Frames>
+					<Frame name="$parentMask" setAllPoints="true" enableMouse="true" hidden="true">
+						<Scripts>
+							<OnEnter>
+								if (self.tooltip) then
+								GameTooltip:SetOwner(self, "ANCHOR_LEFT");
+								GameTooltip:SetText(self.tooltip, nil, nil, nil, nil, 1);
+								end
+							</OnEnter>
+							<OnLeave function="GameTooltip_Hide"/>
+						</Scripts>
+					</Frame>
+				</Frames>
+				<Scripts>
+					<OnUpdate function="EnchantListApplyREButton_OnUpdate" />
+					<OnClick function="ApplyREButton_OnClick" />
+				</Scripts>
+			</Button>
+			<Button name="EnchantListExtractButton" inherits="UIPanelButtonTemplate" text="Extract RE">
+				<Size>
+					<AbsDimension x="80" y="22"/>
+				</Size>
+				<Anchors>
+					<Anchor point="LEFT" relativeTo="EnchantListFrame" relativePoint="TOPLEFT">
+						<Offset>
+							<AbsDimension x="20" y="-421"/>
+						</Offset>
+					</Anchor>
+				</Anchors>
+				<Scripts>
+					<OnClick function="ExtractREButton_OnClick" />
+				</Scripts>
+			</Button>
 			<Button name="EnchantListFrameCloseButton" inherits="UIPanelCloseButton">
 				<Anchors>
 					<Anchor point="TOPRIGHT" relativeTo="EnchantListFrame" relativePoint="TOPRIGHT">
@@ -627,10 +672,8 @@
 			<OnShow>
 				PlaySound("igCharacterInfoOpen");
 			</OnShow>
-			<OnHide>
-				EnchantListFrameInspectTooltip:Hide()
-				PlaySound("igCharacterInfoClose");
-			</OnHide>
+			<OnHide function="EnchantListFrame_OnHide">
+			</OnHide>>
 			<OnUpdate function="EnchantListFrame_PlaytimeUpdate">
 
 			</OnUpdate>

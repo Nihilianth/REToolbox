@@ -16,6 +16,9 @@ local nameFilter = ""
 local addonPrefix = "[RETB]: "
 local linkExpirationThr = 60 * 5
 
+local reApply = false
+local reExtract = false
+
 function addon:OnInitialize()
 	for i=1,5 do RESpellList_data[i] = {} end
 end
@@ -32,6 +35,8 @@ function EnchantListFrame_OnLoad(self)
 end
 
 function EnchantListFrame_Show()
+	reApply = false
+	reExtract = false
 	RESpellList_filtered = RESpellList_data[1]
 	if playerName == "" then
 		EnchantListFrameTitleText:SetText("REToolbox: All "..#RESpellList_data[1].." REs")
@@ -41,8 +46,12 @@ function EnchantListFrame_Show()
 
 	if playerName == UnitName("player") then
 		EnchantListLinkButton:Show()
+		EnchantListApplyREButton:Show()
+		EnchantListExtractButton:Show()
 	else
 		EnchantListLinkButton:Hide()
+		EnchantListApplyREButton:Hide()
+		EnchantListExtractButton:Hide()
 	end
 	-- apply filters
 	FauxScrollFrame_SetOffset(EnchantListListScrollFrame, 0)
@@ -176,6 +185,8 @@ function EnchantListApplyFilter()
 	EnchantListFrame_Update()
 end
 
+
+
 function EnchantListFilter_OnTextChanged(self, input)
 	local text = self:GetText()
 
@@ -187,6 +198,119 @@ function EnchantListFilter_OnTextChanged(self, input)
 end
 
 -- ** List button handling
+
+function ExtractREButton_OnClick(self, btn)
+	reExtract = not reExtract
+	if reExtract then reApply = false end
+	ResetCursor()
+end
+
+function ApplyREButton_OnClick(self, btn)
+	reApply = not reApply
+	if reApply then reExtract = false end
+	ResetCursor()
+end
+
+function EnchantListFrame_OnHide()
+	reApply = false
+	reExtract = false
+	EnchantListFrameInspectTooltip:Hide()
+	PlaySound("igCharacterInfoClose");
+end
+
+function EnchantListApplyREButton_OnUpdate(self, elapsed)
+	--print("update")
+	if reApply == true then
+		if GameTooltip and GameTooltip:GetItem() then
+			SetCursor("CAST_CURSOR");
+		else
+			SetCursor("CAST_ERROR_CURSOR");
+		end
+		
+	elseif reExtract == true then
+		if GameTooltip and GameTooltip:GetItem() then
+			SetCursor("MINE_CURSOR");
+		else
+			SetCursor("MINE_ERROR_CURSOR");
+		end
+	end
+end
+
+local function GetRESkillId(spellId)
+	local skillId = spellId
+
+	if CollectionsFrame.EnchantList[spellId] == nil then
+		for id, data in pairs(CollectionsFrame.EnchantList) do
+			if data[1][2] == spellId then
+				if spellId ~= id then
+					-- print("correcting id "..spellId.." -> "..id)
+					skillId = id
+					break
+				end
+			end
+		end
+	end
+
+	return skillId
+end
+
+local function HandleItemPickup(tarBag, tarSlot, link)
+	-- print(tarBag, tarSlot, link)
+	if link ~= nil then
+		if reApply then
+			local offset = FauxScrollFrame_GetOffset(EnchantListListScrollFrame);
+			local skillBtn = _G["EnchantListSpellButton"..selectedIdx - offset]
+			local reId = GetRESkillId(skillBtn:GetID())
+			-- local data = CollectionsFrame.EnchantList[reId]
+			RETBPrint("Applying RE ("..GetSkillLink(skillBtn:GetID()).."|cffffff00) to item "..link)
+			AIO.Handle("EnchantReRoll", "ReforgeItem_Collection", tarBag, tarSlot, reId)
+			reApply = false
+		elseif reExtract then
+			local spellId = tonumber(string.match(link, "v4:(%d+)"))
+			AIO.Handle("EnchantReRoll", "DisenchantItem", tarBag, tarSlot)
+			reExtract = false
+		end
+	end
+end
+
+local oldPickupContainer = PickupContainerItem
+local oldPickupInventory = PickupInventoryItem
+
+local function EnchantList_PickupInventoryItem(slotId)
+	if reApply == true or reExtract == true then
+		local tarSlot = slotId - 1
+		local tarBag = 255
+		local link = GetInventoryItemLinkWithRE("player",slotId)
+		HandleItemPickup(tarBag, tarSlot, link)
+	else
+		oldPickupInventory(slotId)
+	end
+end
+
+local function EnchantList_PickupContainerItem(bagId, slotId)
+	if reApply == true or reExtract == true then
+		local tarSlot = 0
+		local tarBag = 0
+		if bagId == 0 then
+			tarBag = 255
+			tarSlot = slotId + 22
+		else
+			tarBag = bagId + 18
+			tarSlot = slotId - 1
+		end
+
+		local link = GetContainerItemLinkWithRE(bagId, slotId)
+		HandleItemPickup(tarBag, tarSlot, link)
+
+
+	else
+		oldPickupContainer(bagId, slotId)
+	end
+	
+end
+
+PickupContainerItem = EnchantList_PickupContainerItem
+PickupInventoryItem = EnchantList_PickupInventoryItem
 
 function EnchantListSkillButton_OnClick(self, btn)
 	-- addon:Print("clicked "..self:GetID())
