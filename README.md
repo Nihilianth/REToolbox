@@ -3,7 +3,14 @@ An addon for Ascension Classless realms. Allows you to see if characters on your
 
 ## Download
 
-ZIP files found in [Latest Releases (0.0.3b)](https://github.com/Nihilianth/REToolbox/releases/tag/v0.0.3b_apply_extract) already contain the required libraries . If you already have DataStore ``r26`` or DataStore_AscensionRE v0.0.2 (``e07340d``) you don't have to replace them.
+ZIP files found in [Latest Releases (0.0.4b)](https://github.com/Nihilianth/REToolbox/releases/tag/v0.0.4b) already contain the required libraries . If you already have DataStore ``r26`` or DataStore_AscensionRE v0.0.2 (``e07340d``) you don't have to replace them.
+
+## New in version 0.0.4b: Reforging / Extracting and Application of REs
+
+It is now possible to Reforge items aswell as apply and extract REs within the addon. Tokens used for those functions are now displayed aswell.
+Toggle Buttons function can be used to perform application / extraction on multiple items.
+
+![image](https://user-images.githubusercontent.com/6731717/116002479-38e6f800-a5fa-11eb-8a81-89a06ac8482b.png)
 
 ## New in version 0.0.3b: Character Pane Highlights, RE Collection Linking / UI, colored spell names
 
