@@ -672,7 +672,7 @@
 				<Animations>
 					<AnimationGroup parentKey="PulseAnim" looping="REPEAT">
 						<Alpha targetKey="$parent.$parent.flashTexture" duration="0.5" change="-0.5" />
-						<Alpha targetKey="$parent.$parent.flashTexture" druation="0.5" order="2" change="0.5" />
+						<Alpha druation="0.5" targetKey="$parent.$parent.flashTexture" order="2" change="0.5" />
 					</AnimationGroup>
 				</Animations>
 				<Layers>
@@ -830,6 +830,63 @@
 					</OnLeave>
 				</Scripts>
 			</CheckButton>
+			<Button name="RECurrencyButton3" inherits="UIPanelButtonTemplate" text="1">
+				<Size x="22" y="22" />
+				<Anchors>
+					<Anchor point="LEFT" relativeTo="EnchantListToggleButtonsCheckButton" relativePoint="RIGHT">
+						<Offset x="90" />
+					</Anchor>
+				</Anchors>
+				<Scripts>
+					<OnEnter>
+						GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+						GameTooltip:SetHyperlink("|cff71d5ff|Hitem:98463|h[Mystic Extract]|h|r")
+						GameTooltip:Show()
+					</OnEnter>
+					<OnLeave>
+						GameTooltip:Hide()
+					</OnLeave>
+				</Scripts>
+				<NormalTexture file="Interface\Icons\Inv_Custom_MysticExtract" />
+			</Button>
+			<Button name="RECurrencyButton2" inherits="UIPanelButtonTemplate" text="1">
+				<Size x="22" y="22" />
+				<Anchors>
+					<Anchor point="LEFT" relativeTo="RECurrencyButton3" relativePoint="RIGHT">
+						<Offset x="10" />
+					</Anchor>
+				</Anchors>
+				<Scripts>
+					<OnEnter>
+						GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+						GameTooltip:SetHyperlink("|cff71d5ff|Hitem:98462|h[Mystic Rune]|h|r")
+						GameTooltip:Show()
+					</OnEnter>
+					<OnLeave>
+						GameTooltip:Hide()
+					</OnLeave>
+				</Scripts>
+				<NormalTexture file="Interface\Icons\Inv_Custom_ReforgeToken" />
+			</Button>
+			<Button name="RECurrencyButton1" inherits="UIPanelButtonTemplate" text="1">
+				<Size x="22" y="22" />
+				<Anchors>
+					<Anchor point="LEFT" relativeTo="RECurrencyButton2" relativePoint="RIGHT">
+						<Offset x="10" />
+					</Anchor>
+				</Anchors>
+				<Scripts>
+					<OnEnter>
+						GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+						GameTooltip:SetHyperlink("|cff71d5ff|Hitem:98570|h[Mystic Orb]|h|r")
+						GameTooltip:Show()
+					</OnEnter>
+					<OnLeave>
+						GameTooltip:Hide()
+					</OnLeave>
+				</Scripts>
+				<NormalTexture file="Interface\Icons\inv_custom_CollectionRCurrency" />
+			</Button>
 		</Frames>
 		<Scripts>
 			<OnMouseDown>

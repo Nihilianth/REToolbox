@@ -1,6 +1,6 @@
 -- Author      : nihilianth
 -- Create Date : 4/6/2021 3:48:07 PM
-EnchantListFrameAddon = LibStub("AceAddon-3.0"):NewAddon("EnchantListFrameAddon", "AceConsole-3.0", "AceEvent-3.0", "AceSerializer-3.0", "AceComm-3.0", "AceHook-3.0");
+EnchantListFrameAddon = LibStub("AceAddon-3.0"):NewAddon("EnchantListFrameAddon", "AceConsole-3.0", "AceEvent-3.0", "AceSerializer-3.0", "AceComm-3.0", "AceHook-3.0", "AceTimer-3.0");
 if not DataStore_AscensionRE then return end
 
 LibDeflate = LibStub:GetLibrary("LibDeflate")
@@ -21,8 +21,20 @@ local reExtract = false
 local reReforge = false
 local reToggle = false
 
+local version = {0, 0, 4}
+
 function EnchantListFrame_OnLoad(self)
 	EnchantListFrame:Hide()
+	for i=1,3 do
+		local currBtn = _G["RECurrencyButton"..i]
+		currBtn.Text = currBtn:CreateFontString(nil)
+		currBtn.Text:SetShadowOffset(0, 0)
+		currBtn.Text:SetPoint("BOTTOM", 0, -8)
+		currBtn.Text:SetSize(32, 32)
+		currBtn.Text:SetJustifyH("CENTER")
+		currBtn.Text:SetJustifyV("CENTER")
+		currBtn.Text:SetFont("Fonts\\FRIZQT__.TTF", 10, "THICKOUTLINE")
+	end
 	EnchantListFrame_SetREList(UnitName("player"), {})
 	self:RegisterEvent("UNIT_PORTRAIT_UPDATE");
 	EnchantListFrame_CreateSkillButtons()
@@ -194,10 +206,30 @@ end
 
 function EnchantListSetButtonToggle()
 	local state = EnchantListToggleButtonsCheckButton:GetChecked()
-	if state ~= nil then reToggle = true end
+	reToggle = state and true or false
+end
+
+function addon:UpdateRETokens()
+
+	local currency = {
+		98570,
+		98462,
+		98463,
+	}
+	
+	for id = 1,3 do
+		local currText = _G["RECurrencyButton"..id]
+		local cnt = GetItemCount(currency[id])
+		if currText ~= nil and currText.Text ~= nil then
+			 currText.Text:SetText(cnt) 
+		end
+	end
+
 end
 
 function SetREUtilButton(apply, extract, reforge)
+	addon:UpdateRETokens()
+
 	if apply ~= nil then
 		reApply = apply
 		reExtract = false
@@ -314,17 +346,22 @@ local function HandleItemPickup(tarBag, tarSlot, link)
 			if reToggle == false then
 				SetREUtilButton(false, nil, nil)
 			end
+			addon:ScheduleTimer("UpdateRETokens", 0.5)
 		elseif reExtract then
 			local spellId = tonumber(string.match(link, "v4:(%d+)"))
 			AIO.Handle("EnchantReRoll", "DisenchantItem", tarBag, tarSlot)
 			if reToggle == false then
 				SetREUtilButton(nil, false, nil)
 			end
+			addon:ScheduleTimer("UpdateRETokens", 0.5)
 		elseif reReforge then
 			AIO.Handle("EnchantReRoll", "ReforgeItem_Prep", tarBag, tarSlot)
 			if reToggle == false then
 				SetREUtilButton(nil, nil, false)
 			end
+			addon:ScheduleTimer("UpdateRETokens", 2.5)
+		else
+			return
 		end
 
 	end
