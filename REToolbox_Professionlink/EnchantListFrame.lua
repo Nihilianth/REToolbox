@@ -1,6 +1,6 @@
 -- Author      : nihilianth
 -- Create Date : 4/6/2021 3:48:07 PM
-EnchantListFrameAddon = LibStub("AceAddon-3.0"):NewAddon("EnchantListFrameAddon", "AceConsole-3.0", "AceEvent-3.0", "AceSerializer-3.0", "AceComm-3.0");
+EnchantListFrameAddon = LibStub("AceAddon-3.0"):NewAddon("EnchantListFrameAddon", "AceConsole-3.0", "AceEvent-3.0", "AceSerializer-3.0", "AceComm-3.0", "AceHook-3.0");
 if not DataStore_AscensionRE then return end
 
 LibDeflate = LibStub:GetLibrary("LibDeflate")
@@ -18,13 +18,8 @@ local linkExpirationThr = 60 * 5
 
 local reApply = false
 local reExtract = false
-
-function addon:OnInitialize()
-	for i=1,5 do RESpellList_data[i] = {} end
-end
-
-function addon:OnEnable()
-end
+local reReforge = false
+local reToggle = false
 
 function EnchantListFrame_OnLoad(self)
 	EnchantListFrame:Hide()
@@ -35,8 +30,8 @@ function EnchantListFrame_OnLoad(self)
 end
 
 function EnchantListFrame_Show()
-	reApply = false
-	reExtract = false
+	SetREUtilButton(false, false, false)
+	EnchantListSetButtonToggle()
 	RESpellList_filtered = RESpellList_data[1]
 	if playerName == "" then
 		EnchantListFrameTitleText:SetText("REToolbox: All "..#RESpellList_data[1].." REs")
@@ -185,8 +180,6 @@ function EnchantListApplyFilter()
 	EnchantListFrame_Update()
 end
 
-
-
 function EnchantListFilter_OnTextChanged(self, input)
 	local text = self:GetText()
 
@@ -197,44 +190,98 @@ function EnchantListFilter_OnTextChanged(self, input)
 	EnchantListApplyFilter()
 end
 
--- ** List button handling
+-- ** RE util button handling
+
+function EnchantListSetButtonToggle()
+	local state = EnchantListToggleButtonsCheckButton:GetChecked()
+	if state ~= nil then reToggle = true end
+end
+
+function SetREUtilButton(apply, extract, reforge)
+	if apply ~= nil then
+		reApply = apply
+		reExtract = false
+		reReforge = false
+	elseif extract ~= nil then
+		reExtract = extract
+		reApply = false
+		reReforge = false
+	elseif reforge ~= nil then
+		reReforge = reforge
+		reApply = false
+		reExtract = false
+	end
+
+	local tarButtons = {
+		EnchantListApplyREButton,
+		EnchantListExtractButton,
+		EnchantListReforgeButton
+	}
+
+	local tarData = {
+		reApply,
+		reExtract,
+		reReforge
+	}
+
+	for id, btn in pairs(tarButtons) do
+		if tarData[id] == true then
+			btn.PulseAnim:Play()
+			btn.flashTexture:Show()
+			btn:SetButtonState("PUSHED", true);
+		else
+			btn.PulseAnim:Stop()
+			btn.flashTexture:Hide()
+			btn:SetButtonState("NORMAL");
+		end
+	end
+
+	if reApply == false and reExtract == false and reReforge == false then
+		ResetCursor()
+	end
+end
+
+function ReforgeREButton_OnClick(self, btn)
+	SetREUtilButton(nil, nil, not reReforge)
+end
 
 function ExtractREButton_OnClick(self, btn)
-	reExtract = not reExtract
-	if reExtract then reApply = false end
-	ResetCursor()
+	SetREUtilButton(nil, not reExtract, nil)
 end
 
 function ApplyREButton_OnClick(self, btn)
-	reApply = not reApply
-	if reApply then reExtract = false end
-	ResetCursor()
+	SetREUtilButton(not reApply, nil, nil)
 end
 
+-- ** List button handling
+
 function EnchantListFrame_OnHide()
-	reApply = false
-	reExtract = false
+	SetREUtilButton(false, false, false)
 	EnchantListFrameInspectTooltip:Hide()
 	PlaySound("igCharacterInfoClose");
 end
 
 function EnchantListApplyREButton_OnUpdate(self, elapsed)
-	--print("update")
-	if reApply == true then
-		if GameTooltip and GameTooltip:GetItem() then
-			SetCursor("CAST_CURSOR");
-		else
-			SetCursor("CAST_ERROR_CURSOR");
-		end
-		
-	elseif reExtract == true then
-		if GameTooltip and GameTooltip:GetItem() then
-			SetCursor("MINE_CURSOR");
-		else
-			SetCursor("MINE_ERROR_CURSOR");
+	local cursorTypes = 
+	{
+		{"CAST_CURSOR", "CAST_ERROR_CURSOR"}, -- apply
+		{"TRAINER_CURSOR", "TRAINER_ERROR_CURSOR"}, -- extract
+		{"MINE_CURSOR", "MINE_ERROR_CURSOR"}, -- reforge
+	}
+	local btnState = {reApply, reExtract, reReforge}
+
+	for idx, state in pairs(btnState) do
+		if state == true then
+			if GameTooltip and GameTooltip:GetItem() then
+				SetCursor(cursorTypes[idx][1]);
+			else
+				SetCursor(cursorTypes[idx][2]);
+			end
 		end
 	end
 end
+
+-- ** Enchant Application / Extraction
 
 local function GetRESkillId(spellId)
 	local skillId = spellId
@@ -264,31 +311,41 @@ local function HandleItemPickup(tarBag, tarSlot, link)
 			-- local data = CollectionsFrame.EnchantList[reId]
 			RETBPrint("Applying RE ("..GetSkillLink(skillBtn:GetID()).."|cffffff00) to item "..link)
 			AIO.Handle("EnchantReRoll", "ReforgeItem_Collection", tarBag, tarSlot, reId)
-			reApply = false
+			if reToggle == false then
+				SetREUtilButton(false, nil, nil)
+			end
 		elseif reExtract then
 			local spellId = tonumber(string.match(link, "v4:(%d+)"))
 			AIO.Handle("EnchantReRoll", "DisenchantItem", tarBag, tarSlot)
-			reExtract = false
+			if reToggle == false then
+				SetREUtilButton(nil, false, nil)
+			end
+		elseif reReforge then
+			AIO.Handle("EnchantReRoll", "ReforgeItem_Prep", tarBag, tarSlot)
+			if reToggle == false then
+				SetREUtilButton(nil, nil, false)
+			end
 		end
+
 	end
 end
 
-local oldPickupContainer = PickupContainerItem
-local oldPickupInventory = PickupInventoryItem
 
 local function EnchantList_PickupInventoryItem(slotId)
-	if reApply == true or reExtract == true then
+	if reApply == true or reExtract == true or reReforge == true then
+		-- Ascension uses custom Bag / slotIDs to send both inventory and bag items
 		local tarSlot = slotId - 1
 		local tarBag = 255
 		local link = GetInventoryItemLinkWithRE("player",slotId)
+		ClearCursor()
 		HandleItemPickup(tarBag, tarSlot, link)
 	else
-		oldPickupInventory(slotId)
+		--oldPickupInventory(slotId)
 	end
 end
 
 local function EnchantList_PickupContainerItem(bagId, slotId)
-	if reApply == true or reExtract == true then
+	if reApply == true or reExtract == true or reReforge == true then
 		local tarSlot = 0
 		local tarBag = 0
 		if bagId == 0 then
@@ -300,17 +357,14 @@ local function EnchantList_PickupContainerItem(bagId, slotId)
 		end
 
 		local link = GetContainerItemLinkWithRE(bagId, slotId)
+		ClearCursor()
 		HandleItemPickup(tarBag, tarSlot, link)
-
-
 	else
-		oldPickupContainer(bagId, slotId)
+		--oldPickupContainer(bagId, slotId)
 	end
 	
 end
 
-PickupContainerItem = EnchantList_PickupContainerItem
-PickupInventoryItem = EnchantList_PickupInventoryItem
 
 function EnchantListSkillButton_OnClick(self, btn)
 	-- addon:Print("clicked "..self:GetID())
@@ -366,7 +420,7 @@ function EnchantListFrame_OnEvent(self, event, msg, sender, ...)
 			
 			local tex = EnchantListFramePortrait:GetTexture()
 			if tex == nil or tex == "" then
-				EnchantListFramePortrait:SetTexture("Interface\\LFGFrame\\UI-LFG-PORTRAIT")
+				EnchantListFramePortrait:SetTexture("Interface\\LFGFrame\\UI-LFG-PORTRAIT") -- Eye
 			end
 		end
 	end
@@ -399,22 +453,15 @@ function EnchantListQualityDropDownBtn_OnClick(self, arg1, arg2, checked)
 end
 
 function EnchantListQualityDropDown_Initialize()
-
 	local info = UIDropDownMenu_CreateInfo()
 	for i, text in pairs(filters) do
 		info.text = text
-		if i == 1 then 
-			--info.checked = function () return EnchantListQualityDropDownState[i] end
-			-- UIDropDownMenu_SetText(EnchantListQualityDropDown, text)
-		else 
-			--info.checked = false 
-		end
 		info.checked = EnchantQualityIdx == i
 		info.func = EnchantListQualityDropDownBtn_OnClick
 
 		UIDropDownMenu_AddButton(info)
 	end
-	-- addon:Print("Initialize")
+	
 	UIDropDownMenu_SetText(EnchantListQualityDropDown, filters[EnchantQualityIdx])
 	UIDropDownMenu_SetSelectedID(EnchantListQualityDropDown, EnchantQualityIdx);
 end
@@ -439,7 +486,7 @@ function EnchantListFrame_SetREList(name, newList)
 		end
 	end
 
-	-- sorted list stored in 1
+	-- sorted list stored in first element
 	for i=2,5 do
 		for idx, data in pairs(knownList[i]) do
 			table.insert(knownList[1], {data[1], data[2], i})
@@ -771,4 +818,13 @@ function ChatFrame_OnHyperlinkShow(e, l, o, n)
 end
 function EnchantListDetailScrollChildFrame_OnLoad()
 	
+end
+
+function addon:OnInitialize()
+	for i=1,5 do RESpellList_data[i] = {} end
+end
+
+function addon:OnEnable()
+	hooksecurefunc("PickupContainerItem", EnchantList_PickupContainerItem)
+	hooksecurefunc("PickupInventoryItem", EnchantList_PickupInventoryItem)
 end
