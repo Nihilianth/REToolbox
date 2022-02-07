@@ -170,7 +170,8 @@ function EnchantListApplyFilter()
 			if string.find(nameLower, searchLower) ~= nil then
 				table.insert(RESpellList_filtered, data)			
 			elseif includeDesc then
-				local descLower = string.lower(REDescriptionForSpell[data[1]])
+				--local descLower = string.lower(REDescriptionForSpell[data[1]])
+				local descLower = string.lower(C_Spell:GetSpellDescription(data[1]))
 				if string.find(descLower, searchLower) ~= nil then
 					table.insert(RESpellList_filtered, data)
 				end
@@ -509,9 +510,20 @@ function EnchantListFrame_SetREList(name, newList)
 	-- sort by quality
 	knownList= {}
 	for i=1,5 do knownList[i] = {} end
+	sum = 0
 
 	for id, entry in pairs(newList) do
-		local spellName, rank, icon = GetSpellInfo(entry)
+		RE =GetREData(entry)
+        if RE and RE.enchantID > 0 then
+			--addon:Print("adding RE:"..RE.quality.." "..RE.spellName)
+			table.insert(knownList[RE.quality], {RE.spellID, RE.spellName})
+			sum = sum + 1
+			--addon:Print("adding RE: "..RE.spellName)
+		else
+			addon:Print("no data for RE: "..entry)
+		end
+
+		--[[local spellName, rank, icon = GetSpellInfo(entry)
 		local rank_str = string.match(rank, "(%d+)")
 		if rank_str then
 			local rank_num = tonumber(rank_str)
@@ -520,8 +532,10 @@ function EnchantListFrame_SetREList(name, newList)
 			table.insert(knownList[rank_num], {entry, spellName} )
 		else
 			addon:Print("Invalid Rank data for spell "..rank)
-		end
+		end]]--
 	end
+
+	addon:Print(#newList.."vs"..sum)
 
 	-- sorted list stored in first element
 	for i=2,5 do
@@ -599,8 +613,10 @@ function addon:SlashCmdCb(input)
 		local word = input:match("search (.+)") 
 		if word == nil then word = "" end
 		local AllList = {}
-		for id, _ in pairs(RESpellList) do
-			table.insert(AllList, id)
+		for enchantID, RE in pairs(AscensionUI.REList) do
+			if RE.enchantID > 0 then
+				table.insert(AllList, RE.spellID) 
+			end
 		end
 		
 		EnchantListFrame_SetREList("", AllList)
@@ -612,8 +628,10 @@ function addon:SlashCmdCb(input)
 		local word = input:match("show (%a+)")
 		if word ~= nil and word == "all" then
 			local AllList = {}
-			for id, _ in pairs(RESpellList) do
-				table.insert(AllList, id)
+			for enchantID, RE in pairs(AscensionUI.REList) do
+				if RE.enchantID > 0 then
+					table.insert(AllList, RE.spellID) 
+				end
 			end
 			
 			if #AllList == 0 then RETBPrint("Not initialized yet.") return end

@@ -4,7 +4,7 @@ local addonName = "REToolbox"
 local initialized = false
 
 local addon = LibStub("AceAddon-3.0"):NewAddon(addonName, "AceConsole-3.0",
-                                               "AceEvent-3.0")
+                                               "AceEvent-3.0", "AceTimer-3.0")
 
 RESpellList = {}
 RESpellDescription = {}
@@ -17,7 +17,13 @@ KnownREs = {}
 -- Helper functions
 local function GetEnchantLinkColored(entry)
     local name, rank, o = GetSpellInfo(entry)
-    local c = GetEnchantColor(rank)
+    --local c = GetEnchantColor(rank)
+    --local c = AscensionUI.MysticEnchant.EnchantQualitySettings[re.quality][1]
+    local c = ""
+    RE =GetREData(entry)
+    if RE and RE.enchantID > 0 then
+        c = AscensionUI.MysticEnchant.EnchantQualitySettings[RE.quality][1]
+    end
     local link = c .. "|Hspell:" .. entry .. "|h[" .. name .. "]|h|r"
     if (link) then
         return link
@@ -37,7 +43,12 @@ function HandleTooltipSet(ref, entry)
     -- Color the name in tooltip
     if ref:GetObjectType() == "GameTooltip" and select(3 , ref:GetSpell()) == entry then
         local name, rank, o = GetSpellInfo(entry)
-        local c = GetEnchantColor(rank)
+        --local c = GetEnchantColor(rank)
+        local c = ""
+        RE =GetREData(entry)
+        if RE and RE.enchantID > 0 then
+            c = AscensionUI.MysticEnchant.EnchantQualitySettings[RE.quality][1]
+        end
         _G[ref:GetName() .. "TextLeft" .. 1]:SetText(format("%s%s|r", c, name))
     end
 
@@ -203,7 +214,7 @@ end)
 -- *** DataStore_AscensionRE processing ***
 
 function addon:ASC_COLLECTION_UPDATE(event, knownList, init)
-    -- addon:Print("Collection Update received " .. #knownList)
+    addon:Print("Collection Update received " .. #knownList)
 
     KnownREs = {}
     NumKnownREs = #knownList
@@ -281,11 +292,89 @@ function addon:ASC_COLLECTION_RE_UNLOCKED(event, entry)
     addon:Print("New Mystic Enchant: "..link..".")
 end
 
+local function InitAscensionData()
+    AscRESpellIds = AscensionUI.REListSpellID
+    local knownList = {}
+
+    KnownREs = {}
+    for n = 1, 5 do KnownREs[n] = {} end
+    REByRank = {}
+    for n = 1, 5 do REByRank[n] = {} end
+    
+    for enchantID, RE in pairs(AscensionUI.REList) do
+        if RE.enchantID > 0 then
+            spellid = RE.spellID
+
+            --addon:Print("parsing enchant "..spellid)
+            if (IsReforgeEnchantmentKnown(RE.enchantID)) then
+                KnownREs[1][spellid] = true
+                table.insert(knownList, spellid)
+                table.insert(KnownREs[RE.quality], spellid)
+            end       
+            RESpellList[spellid] = true
+            RESpellNames[RE.spellName] = spellid
+            if RE.quality > 5 or RE.quality < 1 then
+                addon:Print("quality: "..RE.quality..RE.spellName)
+            else
+                table.insert(REByRank[RE.quality], spellid)
+                desc = C_Spell:GetSpellDescription(spellid)
+                RESpellDescription[RE.spellName.." - "..desc] = entry
+            end
+        else
+            addon:Print("skipped "..RE.enchantID)
+        end
+    end
+    --C_Spell:GetSpellDescription(spellID) 
+    initialized = true
+    NumKnownREs = #knownList
+    ShowLoadedInfo()
+    --[[REByRank = {}
+    for n = 1, 5 do REByRank[n] = {} end
+
+    for _, entry in pairs(AscensionUI.REListSpellID) do
+        mythic_ench = AscensionUI.REList[v]
+        if mythic_ench then
+            quality = mythic_ench.quality
+            spellid = AscensionUI.REList[entry].spellID
+            table.insert(REByRank[quality], spellid)
+
+            if (IsReforgeEnchantmentKnown(entry)) then
+                table.insert(knownList, spellid)
+                table.insert(KnownREs[quality], AscensionUI.REList[spellid].spellID)
+            end            
+            
+            tooltip:SetOwner(WorldFrame, "ACHOR_NONE")
+            tooltip:SetHyperlink("spell:"..spellid)
+            local desc =_G[tooltip:GetName().."TextLeft"..tooltip:NumLines()]:GetText()
+            
+            desc = desc:gsub("\r", "") -- required to parse multi-line descriptions
+            if desc then 
+                RESpellDescription[name.." - "..desc] = spellid
+                addon:Print(name.." - "..desc)
+                REDescriptionForSpell[spellid] = desc
+                RESpellNames[name] = spellid
+-- 
+            else
+                addon:Print("No description for spell "..spellid.. " : "..name)
+            end
+
+            RESpellList[spellid] = true
+
+            RESpellNames[mythic_ench.spellName] = spellid
+        else
+            addon:Print("deprecated enchant: "..entry)
+        end
+    end
+    ]]--
+    
+end
+
 function addon:OnInitialize()
     addon:RegisterMessage("ASC_COLLECTION_UPDATE")
     addon:RegisterMessage("ASC_COLLECTION_INIT")
     addon:RegisterMessage("ASC_COLLECTION_RE_UNLOCKED")
     addon:RegisterEvent("CHAT_MSG_ADDON")
+    addon:ScheduleTimer(InitAscensionData, 5)
 end
 
 
