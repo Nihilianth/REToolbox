@@ -1,9 +1,24 @@
+## _Latest version (with dependencies) here: [Releases: 0.0.6b](https://github.com/Nihilianth/REToolbox/releases/tag/v0.0.6b)_
+
 # REToolbox
 An addon for Ascension Classless realms. Allows you to see if characters on your account or your guildies have a particular Mystic Enchant in their collection.
 
 ## Download
 
-ZIP files found in [Latest Releases (0.0.4b)](https://github.com/Nihilianth/REToolbox/releases/tag/v0.0.4b) already contain the required libraries . If you already have DataStore ``r26`` or DataStore_AscensionRE v0.0.2 (``e07340d``) you don't have to replace them.
+ZIP files found in [Latest Releases (0.0.6b)](https://github.com/Nihilianth/REToolbox/releases/tag/v0.0.6b) already contain the required libraries . If you already have DataStore ``r26`` and DataStore_AscensionRE you don't have to replace them.
+
+## New in version 0.0.6b: New API adaptation, reforge looping, build (+RE) linking
+This version adds compatibility with Ascension after API changes last year.
+- All original functions are working again
+- ``/re show <name>`` now also checks for guildies.
+- Reforge looping allows you to gather Mystic Enchants without intervention.
+
+![ref_loop](https://user-images.githubusercontent.com/6731717/154855722-5b50d1ea-ff92-4f01-8879-06f2399a4059.png)
+- You can export your current build including equipped REs as Builder URL from Character Advancement frame
+![exporturl](https://user-images.githubusercontent.com/6731717/154855728-bf276aaa-8b45-4939-b018-49979f19da1c.png)
+- You can import builds using Ascension builder URL
+![builder_import](https://user-images.githubusercontent.com/6731717/154855747-0162406f-b60b-47ac-b7b2-5a09f2114e99.png)
+- Many other small fixes and changes
 
 ## New in version 0.0.4b: Reforging / Extracting and Application of REs
 
