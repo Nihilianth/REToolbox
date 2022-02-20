@@ -71,7 +71,7 @@
 		</HitRectInsets>
 		<Layers>
 			<Layer level="BACKGROUND">
-				<Texture name="EnchantListFramePortrait">
+				<Texture file="Interface\LFGFrame\UI-LFG-PORTRAIT" name="EnchantListFramePortrait">
 					<Size>
 						<AbsDimension x="60" y="60" />
 					</Size>
@@ -700,6 +700,50 @@
 				</Layers>
 				<Scripts>
 					<OnClick function="ReforgeREButton_OnClick">
+
+					</OnClick>
+				</Scripts>
+			</Button>
+			<Button name="EnchantListReforgeLoopButton" inherits="UIPanelButtonTemplate" text="Loop">
+				<Size>
+					<AbsDimension x="80" y="22" />
+				</Size>
+				<Anchors>
+					<Anchor point="LEFT" relativeTo="EnchantListFrame" relativePoint="TOPLEFT">
+						<Offset x="136" y="-475" />
+					</Anchor>
+				</Anchors>
+				<Animations>
+					<AnimationGroup parentKey="PulseAnim" looping="REPEAT">
+						<Alpha targetKey="$parent.$parent.flashTexture" duration="0.5" change="-0.5" />
+						<Alpha druation="0.5" targetKey="$parent.$parent.flashTexture" order="2" change="0.5" />
+					</AnimationGroup>
+				</Animations>
+				<Layers>
+					<Layer level="BACKGROUND">
+						<Texture file="Interface\PAPERDOLLINFOFRAME\UI-Character-ActiveTab">
+							<Size x="116" y="30" />
+							<Anchors>
+								<Anchor point="TOPLEFT" x="-18" y="0" />
+							</Anchors>
+						</Texture>
+					</Layer>
+					<Layer level="OVERLAY">
+						<Texture name="$parentFlashTexture" parentKey="flashTexture" file="Interface\Buttons\UI-Panel-Button-Glow" alphaMode="ADD">
+							<Anchors>
+								<Anchor point="TOPLEFT">
+									<Offset x="-11" y="7" />
+								</Anchor>
+								<Anchor point="BOTTOMRIGHT">
+									<Offset x="11" y="-7" />
+								</Anchor>
+							</Anchors>
+							<TexCoords left="0" right="0.75" top="0" bottom="0.609375" />
+						</Texture>
+					</Layer>
+				</Layers>
+				<Scripts>
+					<OnClick function="ReforgeRELoopButton_OnClick">
 
 					</OnClick>
 				</Scripts>

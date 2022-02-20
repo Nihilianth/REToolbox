@@ -2,10 +2,12 @@
 ## Title: REToolbox by Nihilianth
 ## Notes: Advanced features for Ascension's Mythic Enchants
 ## Author: Nihilianth (Canalmist on Area 52)
-## Version: 0.0.003b
+## Version: 0.0.6b
 ## Dependencies: DataStore DataStore_AscensionRE
 ## OptionalDeps: Ace3
 ## X-Category: Interface Enhancements
 ## X-Embeds: Ace3
 
+lzstring.lua
+qrencode.lua
 REToolbox.lua
