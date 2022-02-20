@@ -2,7 +2,7 @@
 ## Title: REToolbox_Professionlink
 ## Version: 0.0.3b
 ## Author: Nihilianth
-
+## Dependencies: DataStore_AscensionRE REToolbox
 embeds.xml
 
 EnchantListFrame.xml

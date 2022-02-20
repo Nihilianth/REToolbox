@@ -6,6 +6,9 @@ if not DataStore_AscensionRE then return end
 LibDeflate = LibStub:GetLibrary("LibDeflate")
 
 local addon = EnchantListFrameAddon
+local LAST_SUPPORTED_MINOR = 0
+local LAST_SUPPORTED_PATCH = 5
+local LAST_SUPPORTED_VER = format("%02x%02x", LAST_SUPPORTED_MINOR, LAST_SUPPORTED_PATCH)
 local RESpellList_indexed = {}
 local RESpellList_data = {}
 local RESpellList_filtered = {}
@@ -19,7 +22,11 @@ local linkExpirationThr = 60 * 5
 local reApply = false
 local reExtract = false
 local reReforge = false
+local reReforgeLoopToggle = false
 local reToggle = false
+
+local ITEM_BAG = 0
+local ITEM_SLOT = 0
 
 local version = {0, 0, 4}
 
@@ -29,14 +36,15 @@ function EnchantListFrame_OnLoad(self)
 		local currBtn = _G["RECurrencyButton"..i]
 		currBtn.Text = currBtn:CreateFontString(nil)
 		currBtn.Text:SetShadowOffset(0, 0)
-		currBtn.Text:SetPoint("BOTTOM", 0, -8)
-		currBtn.Text:SetSize(32, 32)
+		currBtn.Text:SetPoint("BOTTOM", 0, -10)
+		currBtn.Text:SetSize(64, 32)
 		currBtn.Text:SetJustifyH("CENTER")
 		currBtn.Text:SetJustifyV("CENTER")
 		currBtn.Text:SetFont("Fonts\\FRIZQT__.TTF", 10, "THICKOUTLINE")
 	end
 	EnchantListFrame_SetREList(UnitName("player"), {})
-	self:RegisterEvent("UNIT_PORTRAIT_UPDATE");
+	self:RegisterEvent("UNIT_PORTRAIT_UPDATE")
+	self:RegisterEvent("COMMENTATOR_SKIRMISH_QUEUE_REQUEST")
 	EnchantListFrame_CreateSkillButtons()
 	table.insert(UISpecialFrames, "EnchantListFrame")
 end
@@ -47,8 +55,10 @@ function EnchantListFrame_Show()
 	RESpellList_filtered = RESpellList_data[1]
 	if playerName == "" then
 		EnchantListFrameTitleText:SetText("REToolbox: All "..#RESpellList_data[1].." REs")
+		SetPortraitToTexture(EnchantListFramePortrait, "Interface\\LFGFrame\\UI-LFG-PORTRAIT")
 	else
 		EnchantListFrameTitleText:SetText("REToolbox: "..playerName.." ("..#RESpellList_data[1]..")")
+		SetPortraitTexture(EnchantListFramePortrait, playerName);
 	end
 
 	if playerName == UnitName("player") then
@@ -66,13 +76,6 @@ function EnchantListFrame_Show()
 	EnchantListFrame_SetSelection(1)
 	--print("show: setting texture for "..playerName)
 	--EnchantListFramePortrait:SetTexture("Interface\\BattlefieldFrame\\UI-Battlefield-Icon")
-	
-	
-	SetPortraitTexture(EnchantListFramePortrait, playerName);
-	local tex = EnchantListFramePortrait:GetTexture()
-	if tex == nil or tex == "" then
-		EnchantListFramePortrait:SetTexture("Interface\\LFGFrame\\UI-LFG-PORTRAIT")
-	end
 
 	
 	EnchantListFrame:Show()
@@ -286,11 +289,27 @@ function ApplyREButton_OnClick(self, btn)
 	SetREUtilButton(not reApply, nil, nil)
 end
 
+function ReforgeRELoopButton_OnClick(self, btn)
+	reReforgeLoopToggle = not reReforgeLoopToggle
+	if reReforgeLoopToggle then
+		self.PulseAnim:Play()
+		self.flashTexture:Show()
+		self:SetButtonState("PUSHED", true)
+	else
+		self.PulseAnim:Stop()
+		self.flashTexture:Hide()
+		self:SetButtonState("NORMAL")
+	end
+end
 -- ** List button handling
 
 function EnchantListFrame_OnHide()
 	SetREUtilButton(false, false, false)
 	EnchantListFrameInspectTooltip:Hide()
+	EnchantListReforgeLoopButton.PulseAnim:Stop()
+	EnchantListReforgeLoopButton.flashTexture:Hide()
+	EnchantListReforgeLoopButton:SetButtonState("NORMAL")
+	reReforgeLoopToggle = false
 	PlaySound("igCharacterInfoClose");
 end
 
@@ -334,29 +353,53 @@ local function GetRESkillId(spellId)
 	return skillId
 end
 
+local function EventBypass(state)
+	local ASC_EVENT = "COMMENTATOR_SKIRMISH_QUEUE_REQUEST"
+	if state == true then
+		AscensionUI.MysticEnchant:UnregisterEvent(ASC_EVENT)
+	else
+		AscensionUI.MysticEnchant:RegisterEvent(ASC_EVENT)
+	end
+end
+
 local function HandleItemPickup(tarBag, tarSlot, link)
 	-- print(tarBag, tarSlot, link)
 	if link ~= nil then
 		if reApply then
 			local offset = FauxScrollFrame_GetOffset(EnchantListListScrollFrame);
 			local skillBtn = _G["EnchantListSpellButton"..selectedIdx - offset]
-			local reId = GetRESkillId(skillBtn:GetID())
+			local reId = GetRESkillId(skillBtn:GetID()) -- spell ID
+			local RE = GetREData(reId) 
 			-- local data = CollectionsFrame.EnchantList[reId]
-			RETBPrint("Applying RE ("..GetSkillLink(skillBtn:GetID()).."|cffffff00) to item "..link)
-			AIO.Handle("EnchantReRoll", "ReforgeItem_Collection", tarBag, tarSlot, reId)
+			if RE and RE.enchantID > 0 then
+				RETBPrint("Applying RE ("..GetSkillLink(skillBtn:GetID()).."|cffffff00) to item "..link)
+				PlaySound(13829)
+				_RequestSlotReforgeEnchantment(tarBag, tarSlot, RE.enchantID)
+				--AIO.Handle("EnchantReRoll", "ReforgeItem_Collection", tarBag, tarSlot, reId)
+			else
+				RETBPrint("Failed to apply invalid RE: "..reId)
+			end
 			if reToggle == false then
 				SetREUtilButton(false, nil, nil)
 			end
 			addon:ScheduleTimer("UpdateRETokens", 0.5)
 		elseif reExtract then
 			local spellId = tonumber(string.match(link, "v4:(%d+)"))
-			AIO.Handle("EnchantReRoll", "DisenchantItem", tarBag, tarSlot)
+			
+			EventBypass(true)
+			_RequestSlotReforgeExtraction(tarBag, tarSlot)
+			--AIO.Handle("EnchantReRoll", "DisenchantItem", tarBag, tarSlot)
 			if reToggle == false then
 				SetREUtilButton(nil, false, nil)
 			end
 			addon:ScheduleTimer("UpdateRETokens", 0.5)
+			addon:ScheduleTimer(EventBypass, 2, false)
 		elseif reReforge then
-			AIO.Handle("EnchantReRoll", "ReforgeItem_Prep", tarBag, tarSlot)
+			ITEM_BAG = tarBag
+			ITEM_SLOT = tarSlot
+			_RequestSlotReforgeEnchantment(tarBag, tarSlot)
+			--DEFAULT_CHAT_FRAME:AddMessage(format("Reforging %s %s", ITEM_BAG, ITEM_SLOT))
+			--AIO.Handle("EnchantReRoll", "ReforgeItem_Prep", tarBag, tarSlot)
 			if reToggle == false then
 				SetREUtilButton(nil, nil, false)
 			end
@@ -372,7 +415,7 @@ end
 local function EnchantList_PickupInventoryItem(slotId)
 	if reApply == true or reExtract == true or reReforge == true then
 		-- Ascension uses custom Bag / slotIDs to send both inventory and bag items
-		local tarSlot = slotId - 1
+		local tarSlot = slotId
 		local tarBag = 255
 		local link = GetInventoryItemLinkWithRE("player",slotId)
 		ClearCursor()
@@ -417,6 +460,7 @@ function EnchantListSkillButton_OnClick(self, btn)
 	end
 end
 
+-- FIXME: this is completely deprecated
 function GetSkillLink(entry)
 	local colors = {"|cffff8000","|cff1eff00","|cff0070dd","|cffa335ee","|cffff8000"}
 	local name, rank, icon = GetSpellInfo(entry)
@@ -447,22 +491,62 @@ function EnchantListFrame_CreateSkillButtons()
 	end
 end
 
+local reforgeLoopStartTime = 0
+local REFORGE_RETRY_DELAY = 0.1 -- seconds
+
+function ReforgeLoop()
+	-- check item_bag item_slot ?
+	local spellName = UnitCastingInfo("player")
+	local delta = (GetTime() - reforgeLoopStartTime)
+
+	if not spellName or spellName ~= "Enchanting" then
+		if delta > 2.0 then
+			RETBPrint("Failed to trigger reforge loop. Are you lagging?")
+		else
+			--addon:Print("Retrying reforging. Delta: "..delta)
+			_RequestSlotReforgeEnchantment(ITEM_BAG, ITEM_SLOT)
+			addon:ScheduleTimer(ReforgeLoop, REFORGE_RETRY_DELAY)
+		end
+	else
+		--addon:Print("Loop successful. Delta: "..delta)
+	end
+end
+
 function EnchantListFrame_OnEvent(self, event, msg, sender, ...)
-	if msg ~= nil and sender ~= nil then return end
 	if ( event == "UNIT_PORTRAIT_UPDATE" ) then
-		local arg1 = ...;
-		if ( arg1 == playerName ) then
+		--DEFAULT_CHAT_FRAME:AddMessage("UNIT_PORTRAIT_UPDATE "..msg)
+		--if msg ~= nil and sender ~= nil then return end
+		if ( msg == playerName or UnitName(msg) == playerName ) then
 			
 			--print("setting texture for "..playerName)
 			SetPortraitTexture(EnchantListFramePortrait, playerName);
 			
 			local tex = EnchantListFramePortrait:GetTexture()
 			if tex == nil or tex == "" then
-				EnchantListFramePortrait:SetTexture("Interface\\LFGFrame\\UI-LFG-PORTRAIT") -- Eye
+				SetPortraitToTexture(EnchantListFramePortrait, "Interface\\LFGFrame\\UI-LFG-PORTRAIT")
 			end
+		end
+	elseif event == "COMMENTATOR_SKIRMISH_QUEUE_REQUEST" and
+			msg == "ASCENSION_REFORGE_ENCHANT_RESULT" then
+				--DEFAULT_CHAT_FRAME:AddMessage("Got reforge result")
+		-- TODO: whitelist, stop on quality, loop through bags etc.
+		--local enchantID = select(1, ...)
+		addon:UpdateRETokens()
+		--RE = GetREData(enchantID)
+		if reReforgeLoopToggle == true then
+			--if RE.quality ~= 5 then
+			--DEFAULT_CHAT_FRAME:AddMessage(format("Looping %s %s", ITEM_BAG, ITEM_SLOT))
+				-- addon:ScheduleTimer(_RequestSlotReforgeEnchantment, 0.6, ITEM_BAG, ITEM_SLOT) -- todo: find a way to hook spell completion
+				reforgeLoopStartTime = GetTime()
+				addon:ScheduleTimer(ReforgeLoop, 0.6)
+			--_RequestSlotReforgeEnchantment(tarBag, tarSlot)
+			--else
+			--	PlaySound("LFG_RoleCheck")
+			--end
 		end
 	end
 end
+
 
 function EnchantListQualityDropDown_OnLoad(self)
 	local info = UIDropDownMenu_CreateInfo()
@@ -535,8 +619,6 @@ function EnchantListFrame_SetREList(name, newList)
 		end]]--
 	end
 
-	addon:Print(#newList.."vs"..sum)
-
 	-- sorted list stored in first element
 	for i=2,5 do
 		for idx, data in pairs(knownList[i]) do
@@ -599,11 +681,11 @@ end
 function addon:SlashCmdCb(input)
 	if input == "" then
 		RETBPrint("Available Commands:")
-		RETBPrint("/re show - Shows current character's known REs")
-		RETBPrint("/re show all - Shows all available REs")
-		RETBPrint("/re show <altName> - Shows the RE collection of another character on your account")
-		RETBPrint("/re search <searchItem> - Search for a RE by name/description")
-		RETBPrint("/re link - Create a link to your character's RE collection")
+		RETBPrint("|cffff8000/re show|r - Show REcollection: Current character")
+		RETBPrint("|cffff8000/re show all|r - All Ascension REs")
+		RETBPrint("|cffff8000/re show <Name>|r - Guild member or Alt on the same account")
+		RETBPrint("|cffff8000/re search <searchItem>|r - Search for a RE by name/description")
+		RETBPrint("|cffff8000/re link|r - Create a link to your character's RE collection. Expires after "..linkExpirationThr.." seconds.")
 		return
 	end
 
@@ -638,13 +720,27 @@ function addon:SlashCmdCb(input)
 			EnchantListFrame_SetREList("", AllList)
 			EnchantListFrame_Show()
 		elseif word ~=nil then
-			local altData = DataStore:GetCharacterREs(word)
-			-- print (word, altData)
-			if altData ~= nil and type(altData) == "table" and #altData > 0 then
-				EnchantListFrame_SetREList(word, altData)
+			local typeStr = "(Alt)"
+			charData = DataStore:GetCharacterREs(word)
+			if not charData or type(charData) ~= "table" or #charData == 0 then
+				--RETBPrint("No alt with name "..word.." found.")
+				charData = DataStore:GetGuildieREs(word)
+				typeStr = "(Guild)"
+			end
+			if charData ~= nil and type(charData) == "table" and #charData > 0 then
+				spellids = {}
+				for _, enchantID in pairs(charData) do
+					RE = GetREData(enchantID)
+					if RE.enchantID > 0 then
+						table.insert(spellids, RE.spellID)
+					else
+						RETBPrint("Character "..word.." has broken enchant"..enchantID)
+					end
+				end
+				EnchantListFrame_SetREList(word, spellids)
 				EnchantListFrame_Show()
 			else
-				RETBPrint("No alt with name "..word.." found.")
+				addon:Print("No valid data for character: "..word)
 			end
 		else
 			local KnownList = {}
@@ -669,11 +765,18 @@ function EncodeKnownEnchants()
 	-- TODO: check if known enchants are available
 
 	--encode state string
+	-- todo:change this to use enchantID
 	knownStr = ""
+	local cnt = 0
 	for id, _ in pairs(RESpellList) do -- from REToolbox
 		table.insert(RESpellList_indexed, id)
-		knownStr = knownStr .. ( KnownREs[1][id] and "1" or "0")
+		RE = GetREData(id)
+		knownStr = knownStr .. ( KnownREs[1][RE.enchantID] and "1" or "0")
+		if (KnownREs[1][RE.enchantID]) then
+			cnt = cnt + 1
+		end
 	end
+	--print("total REs: "..cnt, #RESpellList_indexed)
 	
 	if (string.len(knownStr) % 8 ~=0) then
 		local additional = 8-(string.len(knownStr)%8)
@@ -703,7 +806,7 @@ function EncodeKnownEnchants()
 	compress_deflate = LibDeflate:CompressDeflate(knownCharStr, {level = 9})
 	encodedStr = LibDeflate:EncodeForPrint(compress_deflate)
 	
-	-- print("size: ", string.len(encodedStr), string.len(knownStr))
+	--print("size: ", string.len(encodedStr), string.len(knownStr))
 	return encodedStr
 end
 
@@ -716,7 +819,7 @@ function DecodeKnownEnchants(message)
 		end
 	end
 
-	-- addon:Print("Decoding")
+	--addon:Print("Decoding")
 	-- Decode for wow
 	local data_decoded_WoW_addon = LibDeflate:DecodeForPrint(message)
 	inflated = LibDeflate:DecompressDeflate(data_decoded_WoW_addon)
@@ -730,7 +833,8 @@ function DecodeKnownEnchants(message)
 	end 
 	-- END REVERSE STR TO BITS
 	
-	-- addon:Print("decoding done")
+	--addon:Print("decoding done")
+	--print(string.len(message), string.len(knownStr))
 	if false then
 		-- print(string.len(combined), string.len(knownStr))
 
@@ -741,26 +845,89 @@ function DecodeKnownEnchants(message)
 		end
 	end
 
-	-- addon:Print("decoded data size")
-	-- print(string.len(message), #RESpellList_indexed)
-
+	--addon:Print("decoded data size")
+	--print(string.len(message), #RESpellList_indexed)
+	local sum = 0
 	for idx, id in pairs(RESpellList_indexed) do
 		if combined:sub(idx,idx) == "1" then
-			table.insert(decodedData, RESpellList_indexed[idx])
+			RE = GetREData(RESpellList_indexed[idx])
+			table.insert(decodedData, RE.spellID)
 		end
 	end
+	--print("total REs: "..#decodedData, #RESpellList_indexed)
 
 	return decodedData
+end
+
+function GetVersionHexString()
+	local version = GetAddOnMetadata("REToolbox", "Version")
+	-- local lastCompatibleVersion = format("%02x%02x", 0, 5) -- TODO: Move this to top
+	local major, minor, patch = string.match(version, "(%d+)%.(%d+)%.(%d+)")
+	return format("aa%02x%02x%02x-%s", tonumber(major), tonumber(minor), tonumber(patch), LAST_SUPPORTED_VER)
+end
+
+function ParseVersionHexString(version)
+	-- aa is stripped before this function
+	versionData = {}
+	for item in string.gmatch(version, "%x%x") do 
+		table.insert(versionData, tonumber(item, 16))
+		--print(#versionData, tonumber(item, 16))
+	end
+
+	assert(#versionData == 5)
+	return versionData
 end
 
 --- Generates random UUID with length of 36. See https://gist.github.com/jrus/3197011
 function GenerateLinkUUID()
 	-- math.randomseed( time() ) -- TODO: Is seed needed?
-	local template ='xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'
+	-- TODO: Version check
+	-- local template ='xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'
+	local template = GetVersionHexString().."-4xxx-yxxx-xxxxxxxxxxxx"
     return string.gsub(template, '[xy]', function (c)
         local v = (c == 'x') and random(0, 0xf) or random(8, 0xb)
         return string.format('%x', v)
     end)
+end
+
+function CheckUUIDVersion(uuid)
+	if #uuid ~= 36 then
+		RETBPrint("Malformed link UUID, length: "..#uuid)
+		return false
+	end
+
+	local valid = string.sub(uuid, 1, 2) == "aa"
+
+	if valid == true then
+		local localVersion = GetAddOnMetadata("REToolbox", "Version")
+		local parsedVersion = ParseVersionHexString(string.sub(uuid, 3, 13))
+		local major, minor, patch = string.match(localVersion, "(%d+)%.(%d+)%.(%d+)")
+
+		if tonumber(major) < parsedVersion[1] then
+			RETBPrint(format("User has a newer REToolbox major version: (%s) vs. yours: (%s). Latest version can be found at https://github.com/Nihilianth/REToolbox", major, parsedVersion[1]))
+			return false
+		end
+		local senderVersion = format("%s.%s.%s", parsedVersion[1], parsedVersion[2], parsedVersion[3])
+
+		if tonumber(minor) < parsedVersion[4] or tonumber(patch) < parsedVersion[5] then
+			RETBPrint(format("Update REToolbox to view this link. Sender: version (%s) You: (%s). Latest version can be found at https://github.com/Nihilianth/REToolbox", senderVersion, localVersion))
+			return false
+		end
+
+		if LAST_SUPPORTED_MINOR > parsedVersion[2] or LAST_SUPPORTED_PATCH > parsedVersion[3] then
+			RETBPrint(format("Player is using an incompatible (old) version of REToolbox. Sender: version (%s) You: (%s)", senderVersion, localVersion))
+			return false
+		end
+
+		if tonumber(minor) < parsedVersion[2] or tonumber(patch) < parsedVersion[3] then
+			RETBPrint(format("Player is using a newer version or REToolbox (%s). Consider updating at https://github.com/Nihilianth/REToolbox", senderVersion))
+		end
+	else
+		RETBPrint("Link from an outdated version")
+		return false
+	end
+
+	return true
 end
 
 -- contains a list of active chat links (uuid : creationTime)
@@ -810,7 +977,7 @@ function addon:OnCommReceived(prefix, message, dist, sender)
 		-- todo: cache last RE data im compressed fmt
 		RETBPrint("Request from |cffff7c0a"..sender.."|r")
 		if string.len(message) ~= 36 or activeLinkData[message] == nil then
-			addon:Print("Expired link request from "..sender)
+			addon:Print("Expired link request from "..sender..". Consider using a macro for world channel announcements.")
 			return
 		end
 		local encodedStr = EncodeKnownEnchants()
@@ -854,17 +1021,19 @@ function ChatFrame_OnHyperlinkShow(e, l, o, n)
 		end
 		local uuid, name = strsplit(":", t)
 
-		if name == UnitName("player") then
-			local KnownList = {}
-			for id, _ in pairs(KnownREs[1]) do
-				table.insert(KnownList, id)
-			end
+		if CheckUUIDVersion(uuid) == true then
+			if name == UnitName("player") then
+				local KnownList = {}
+				for id, _ in pairs(KnownREs[1]) do
+					table.insert(KnownList, id)
+				end
 
-			EnchantListFrame_SetREList(UnitName("player"), KnownList)
-			EnchantListFrame_Show()
-		else
-			addon:SendCommMessage("RETB_ENCH_REQ", uuid, "WHISPER", name)
-			RETBPrint("Requesting RE List from: |cffff7c0a"..name.."|r")
+				EnchantListFrame_SetREList(UnitName("player"), KnownList)
+				EnchantListFrame_Show()
+			else
+				addon:SendCommMessage("RETB_ENCH_REQ", uuid, "WHISPER", name)
+				RETBPrint("Requesting RE List from: |cffff7c0a"..name.."|r")
+			end
 		end
 		
     else
